@@ -1,13 +1,14 @@
 name: Native iOS collector checks
 on: [push, pull_request]
 concurrency:
-  group: ios-${{ github.head_ref || github.ref }}
+  group: ios-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   ios:
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - run: |
@@ -42,4 +43,4 @@ jobs:
           PY
       - name: Simulator unpaired privacy boundary
         if: always()
-        run: xcodebuild -project mobile/ios/CPULearningPhone.xcodeproj -scheme CPULearningPhone -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath build-ios CODE_SIGNING_ALLOWED=NO test
+        run: xcodebuild -project mobile/ios/CPULearningPhone.xcodeproj -scheme CPULearningPhone -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath build-ios CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 test

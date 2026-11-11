@@ -5,6 +5,8 @@ final class PhoneUITests:XCTestCase {
         XCTAssertTrue(app.buttons["importPairing"].waitForExistence(timeout:10))
         XCTAssertFalse(app.buttons["captureButton"].isEnabled)
         XCTAssertFalse(app.buttons["syncButton"].isEnabled)
-        XCTAssertTrue(app.staticTexts["statusText"].exists)
+        let status=app.staticTexts["statusText"]
+        for _ in 0..<3 where !status.exists { app.swipeUp() }
+        XCTAssertTrue(status.waitForExistence(timeout:5))
     }
 }

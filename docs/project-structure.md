@@ -4,7 +4,12 @@
 
 | 路径 | 职责 |
 | --- | --- |
-| `include/cpuai/learner.hpp` | v0.1 学习 API、表达式搜索、受限解释器与示例存储；当前为 header-only |
+| `include/cpuai/learner.hpp` | 学习 API、修订和示例存储；header-only |
+| `include/cpuai/polynomial.hpp` | 精确多项式身份、数值执行和域检查 |
+| `include/cpuai/search.hpp` | 有界多假设搜索、共识预测和主动问题 |
+| `include/cpuai/evaluation.hpp` | 冻结候选、独立测试及报告有效性检查 |
+| `tests/evaluation/` | 固定未见输入回归样例 |
+| `tests/integration/` | CLI 独立进程及恢复测试 |
 | `apps/cli/main.cpp` | 教学、查询、保存加载命令；不持有领域答案 |
 | `tests/unit/learner_test.cpp` | 可运行的学习行为、泛化、纠错和存储测试 |
 | `examples/` | 可复现教学会话 |
@@ -36,4 +41,4 @@
 
 依赖方向：apps/adapters → public contracts/runtime → learning/core/memory；core 不反向依赖适配器。evaluation 的正确答案不得流入候选生成器。
 
-将来拆分 learner.hpp 时先提取 DSL 与存储，再提取搜索；保持公开 API 与行为回归。避免在算法未稳定前拆出大量包。
+P1 已提取多项式表示、搜索与评估；存储暂留 learner.hpp。未来的 compiled source 模块按性能和稳定性需要引入，避免过早创建大量空包。

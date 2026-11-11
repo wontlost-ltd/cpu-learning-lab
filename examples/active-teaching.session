@@ -1,0 +1,10 @@
+teach square 0 0
+teach square 1 1
+show square
+ask square 2
+next square
+exam square tests/evaluation/square-v1.exam
+teach square 2 4
+ask square 3
+exam square tests/evaluation/square-v1.exam
+quit

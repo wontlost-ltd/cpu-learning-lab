@@ -1,0 +1,6 @@
+teach transform -2 -3
+teach transform 0 1
+teach transform 3 7
+show transform
+ask transform 9
+quit

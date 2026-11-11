@@ -1,0 +1,52 @@
+{
+  "scope": "synthetic fast pipe; untaught model; processing timer excludes capture and stdout; wall includes process/pipes; no microphone or energy measurement",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "results": [
+    {
+      "rate": 16000,
+      "window_ms": 100,
+      "windows": 100,
+      "lessons": 0,
+      "processing_p50_ms": 0.070327,
+      "processing_p95_ms": 1.32254,
+      "wall_seconds": 0.03519067399975029,
+      "audio_seconds": 10.0,
+      "summary": {
+        "type": "summary",
+        "end": "window_limit",
+        "windows": 100,
+        "consumed_frames": 160000,
+        "discarded_partial_frames": 0,
+        "discarded_capture_frames": 0,
+        "device_overflows": 0,
+        "reload_failures": 0,
+        "captures": 0,
+        "processing_total_ms": 23.9567,
+        "processing_max_ms": 4.77439
+      }
+    },
+    {
+      "rate": 48000,
+      "window_ms": 2000,
+      "windows": 20,
+      "lessons": 0,
+      "processing_p50_ms": 6.36399,
+      "processing_p95_ms": 9.83599,
+      "wall_seconds": 0.17198093099977996,
+      "audio_seconds": 40.0,
+      "summary": {
+        "type": "summary",
+        "end": "window_limit",
+        "windows": 20,
+        "consumed_frames": 1920000,
+        "discarded_partial_frames": 0,
+        "discarded_capture_frames": 0,
+        "device_overflows": 0,
+        "reload_failures": 0,
+        "captures": 0,
+        "processing_total_ms": 138.198,
+        "processing_max_ms": 10.717
+      }
+    }
+  ]
+}

@@ -4,6 +4,11 @@
 
 | 路径 | 职责 |
 | --- | --- |
+| `include/cpuai/audio_stream.hpp` | 有界连续帧、消费确认、窗口切片／取消、暂停和断流片段、WAV 录制 |
+| `adapters/audio/` | 可停止 PCM 管道输入与可选 PortAudio 默认麦克风 |
+| `apps/listen/main.cpp` | 连续识别、有限捕获、显式反馈快照加载、JSON Lines |
+| `tests/unit/audio_stream_test.cpp` | 分块等价、背压重试、断点隔离、暂停／续算与停止 |
+| `tests/integration/listen_cli_test.py` | 连续进程、录音教学、修订替换、损坏更新与输入边界 |
 | `include/cpuai/observations.hpp` | 有界观察流、来源水位、背压、显式时钟误差对齐 |
 | `include/cpuai/audio.hpp` | PCM16 WAV 解码、固定信号特征、用户教学分类、持久化、独立考试 |
 | `tests/unit/observations_test.cpp` | 重复、迟到、满队列重试、时间误差与来源限制 |

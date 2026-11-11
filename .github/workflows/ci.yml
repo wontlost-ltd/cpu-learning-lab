@@ -9,7 +9,14 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      # Action runtimes are declared upstream; shell commands follow the latest Node LTS.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 'lts/*'
+          check-latest: true
+          package-manager-cache: false
+      - run: node --version
       - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - run: cmake --build build --config Release
       - run: ctest --test-dir build -C Release --output-on-failure

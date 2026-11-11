@@ -29,10 +29,10 @@ public:
     void revoke(const std::string& device){const auto it=grants_.find(device);check(it!=grants_.end(),"device not paired");it->second.second=false;save();}
 };
 inline void initialize(const std::filesystem::path& dir,const std::string& node){validateDeviceId(node);check(std::filesystem::create_directory(dir),"identity directory must be new");check(chmod(dir.c_str(),0700)==0,"cannot restrict identity directory");
-    Owned<EVP_PKEY,EVP_PKEY_free> key(EVP_PKEY_Q_keygen(nullptr,nullptr,"ED25519"),EVP_PKEY_free);Owned<X509,X509_free> cert(X509_new(),X509_free);
+    Owned<EVP_PKEY,EVP_PKEY_free> key(EVP_PKEY_Q_keygen(nullptr,nullptr,"EC","prime256v1"),EVP_PKEY_free);Owned<X509,X509_free> cert(X509_new(),X509_free);
     check(key&&cert,"identity generation failed");check(X509_set_version(cert.get(),2)==1&&ASN1_INTEGER_set(X509_get_serialNumber(cert.get()),1)==1,"certificate setup failed");
     check(X509_gmtime_adj(X509_getm_notBefore(cert.get()),-60)&&X509_gmtime_adj(X509_getm_notAfter(cert.get()),31536000),"certificate dates failed");
-    check(X509_set_pubkey(cert.get(),key.get())==1,"certificate key failed");auto name=X509_get_subject_name(cert.get());check(X509_NAME_add_entry_by_txt(name,"CN",MBSTRING_ASC,reinterpret_cast<const unsigned char*>(node.c_str()),-1,-1,0)==1&&X509_set_issuer_name(cert.get(),name)==1&&X509_sign(cert.get(),key.get(),nullptr)>0,"certificate sign failed");
+    check(X509_set_pubkey(cert.get(),key.get())==1,"certificate key failed");auto name=X509_get_subject_name(cert.get());check(X509_NAME_add_entry_by_txt(name,"CN",MBSTRING_ASC,reinterpret_cast<const unsigned char*>(node.c_str()),-1,-1,0)==1&&X509_set_issuer_name(cert.get(),name)==1&&X509_sign(cert.get(),key.get(),EVP_sha256())>0,"certificate sign failed");
     Owned<BIO,BIO_free> keyPem(BIO_new(BIO_s_mem()),BIO_free),certPem(BIO_new(BIO_s_mem()),BIO_free);
     check(keyPem&&certPem&&PEM_write_bio_PrivateKey(keyPem.get(),key.get(),nullptr,nullptr,0,nullptr,nullptr)==1&&PEM_write_bio_X509(certPem.get(),cert.get())==1,"identity encoding failed");
     char* data=nullptr;auto length=BIO_get_mem_data(keyPem.get(),&data);privateFile(dir/"private.pem",std::string(data,static_cast<std::size_t>(length)));

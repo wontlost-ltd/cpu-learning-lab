@@ -4,6 +4,9 @@
 
 | 路径 | 职责 |
 | --- | --- |
+| `mobile/ios/` | SwiftUI 采集端、C ABI 桥接、Apple TLS、Keychain、Swift 单元和模拟器 UI 测试 |
+| `tests/unit/phone_bridge_test.cpp` | 同一桥接代码的跨平台固定队列、持久事件与批次测试 |
+| `tests/integration/phone_network_test.py` | Mac Apple TLS 客户端与 OpenSSL 接收端真实互通 |
 | `include/cpuai/network_protocol.hpp` | 有界、版本化批次与设备来源绑定 |
 | `adapters/network/` | 可选 POSIX/OpenSSL TLS、离线配对、授权和撤销 |
 | `apps/link/main.cpp` | TLS 服务／发送端、持久确认与连接期限 |

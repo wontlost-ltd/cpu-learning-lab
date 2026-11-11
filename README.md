@@ -1,6 +1,6 @@
 # CPU Learning Lab — 原生持续学习原型
 
-C++20、CPU-only、无第三方运行时依赖、无 LLM/API 调用。当前阶段：P4 离线音频与观察流原型（真实采集和功耗验收待完成）。
+C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P4 连续音频管线与可选麦克风入口（真实设备和功耗验收待完成）。
 
 用户提供输入输出示例，系统归纳可执行算术假设，保留歧义并主动求教。它是有明确先验和边界的程序归纳实验，尚不是通用白板智能。
 
@@ -14,6 +14,8 @@ C++20、CPU-only、无第三方运行时依赖、无 LLM/API 调用。当前阶�
 - [可复现基准](benchmarks/README.md)
 - [P3 技能组合与版本设计](docs/adr/0004-skill-composition.md)
 - [P4 音频与观察流设计](docs/adr/0005-observations-and-audio.md)
+- [P4 连续音频与反馈设计](docs/adr/0006-continuous-audio.md)
+- [连续音频操作示例](examples/live-audio.md)
 - [本地声音教学示例](examples/audio-session.md)
 - [贡献说明](CONTRIBUTING.md)
 
@@ -149,4 +151,18 @@ GitHub 配置 Linux/macOS/Windows CI；历史运行曾因账户付款／消费�
 
 `observe SOURCE SEQ TIME OFFSET ERROR WAV` 接收有时间信息的音频特征事件；`align A B MS` 按显式时钟偏移与误差上界对齐。默认缓冲 64 条，满时明确拒绝并允许排空后重试。`stream-pop` 取出最早事件；`stream-stats` 查看接受、拒绝与峰值。事件缓冲仅存在于当前进程。
 
-WAV 限单声道 PCM16，8..48 kHz、50 ms..2 s。音频路径有输入大小与样本数上限，尚不支持 `limits`/取消令牌。没有麦克风、语音识别、视觉、自动时钟同步或穿戴设备驱动。真实录音泛化、持续输入调度和功耗仍需后续实测。详见[教学示例](examples/audio-session.md)与[设计边界](docs/adr/0005-observations-and-audio.md)。
+WAV 限单声道 PCM16，8..48 kHz、50 ms..2 s。音频路径有输入大小与样本数上限，尚不支持 `limits`/取消令牌。已增加可选麦克风入口（见下节），尚无语音识别、视觉、自动时钟同步或穿戴设备驱动。真实录音泛化、持续输入调度和功耗仍需后续实测。详见[教学示例](examples/audio-session.md)与[设计边界](docs/adr/0005-observations-and-audio.md)。
+
+## 连续输入与显式用户反馈
+
+新增原生 `cpu-listen`：
+
+```sh
+./build/cpu-listen --stdin 16000 100 sounds.state 1000 < mono-16k.pcm
+```
+
+按有界窗口处理 PCM，输出带模型修订与片段／帧位置的 JSON Lines。支持精确消费帧确认、背压重试、切片与取消；暂停、续算和设备断流的语义由单元测试覆盖。默认不保存音频，显式 `--capture NEW_DIR MAX_FILES` 才录制有限窗口供用户教学。
+
+可选 `-DCPUAI_WITH_PORTAUDIO=ON` 构建连接系统默认麦克风（另需安装 PortAudio）；使用 `--microphone` 代替 `--stdin`。`--reload` 允许用户在另一进程纠错并保存模型，监听进程在窗口边界采用新的完整快照，损坏更新不会替换当前模型。实时加载不是独立验收认证，也没有把预测当作教学标签。
+
+完整命令、权限、构建与计量边界见[连续音频示例](examples/live-audio.md)和[ADR 0006](docs/adr/0006-continuous-audio.md)。真实麦克风、噪声泛化、跨设备时钟和能耗仍待实测。

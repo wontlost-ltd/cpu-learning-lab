@@ -29,3 +29,11 @@ make build/audio-benchmark
 ```
 
 或用 CMake 的 `-DCPUAI_BUILD_BENCHMARKS=ON`。程序预热一次，再测 30 次 WAV 读取、固定特征提取和单标签最近邻查询，输出 p50/p95（毫秒）。重复同一文件，包含热缓存影响；不含录音设备和传输，非硬实时保证，非能耗测量。边界与先验见 ADR 0005。
+
+## P4 连续输入基准
+
+```sh
+python3 benchmarks/stream_collect.py build/cpu-listen --output stream-results.json
+```
+
+脚本用确定性音调，经快速 PCM 管道测试 100 个 100 ms / 16 kHz 窗口和 20 个 2 s / 48 kHz 窗口；未教学模型，不保存录音。输出处理 p50/p95 与完整进程墙钟时间。窗口等待、麦克风驱动、stdout 与录制写入不计入 processing_ms；不能当成硬件端到端延迟或功耗。当前记录见 `results/p4-stream-linux-2026-11-11.json`。

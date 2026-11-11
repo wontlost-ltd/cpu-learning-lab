@@ -5,9 +5,43 @@
 #include <limits>
 #include <optional>
 #include <sstream>
+#include <span>
 
 namespace cpuai {
 struct AudioSample {AudioFeatures features{};std::string fingerprint;std::uint32_t rate=0;std::size_t frames=0;};
+inline AudioSample analyzePcm16(std::span<const std::int16_t> pcm,std::uint32_t rate) {
+    const auto count=pcm.size();
+    if(rate<8000||rate>48000||count<rate/20||count>static_cast<std::size_t>(rate)*2)
+        throw std::runtime_error("PCM rate/duration outside audio bounds");
+    AudioSample result;result.rate=rate;result.frames=count;
+    std::vector<double> samples(count);double energy=0;std::size_t crossings=0;
+    std::uint64_t hash=14695981039346656037ULL;
+    auto hashByte=[&](unsigned char b){hash^=b;hash*=1099511628211ULL;};
+    for(int i=0;i<4;++i)hashByte(static_cast<unsigned char>((rate>>(8*i))&255));
+    for(std::size_t i=0;i<count;++i){const auto value=pcm[i];
+        samples[i]=value/32768.0;energy+=samples[i]*samples[i];
+        if(i&&((samples[i]>=0)!=(samples[i-1]>=0)))++crossings;
+        const auto raw=static_cast<std::uint16_t>(pcm[i]);
+        hashByte(static_cast<unsigned char>(raw&255));hashByte(static_cast<unsigned char>(raw>>8));
+    }
+    std::ostringstream id;id<<std::hex<<hash<<'-'<<rate<<'-'<<count;result.fingerprint=id.str();
+    result.features[0]=std::sqrt(energy/count);result.features[1]=static_cast<double>(crossings)/(count-1);
+    // Eight fixed Goertzel probes: explicit signal-processing priors, no learned encoder.
+    // Hann window and energy normalization reduce sensitivity to phase and gain.
+    constexpr std::array<double,8> frequencies{125,250,500,1000,2000,3000,4000,6000};
+    constexpr double pi=3.14159265358979323846;double total=0;
+    for(std::size_t i=0;i<count;++i)samples[i]*=0.5-0.5*std::cos(2*pi*i/(count-1));
+    for(std::size_t band=0;band<frequencies.size();++band){
+        if(frequencies[band]>=rate/2.0)continue;
+        const double coefficient=2*std::cos(2*pi*frequencies[band]/rate);double s1=0,s2=0;
+        for(std::size_t i=0;i<count;++i){
+            const double s=samples[i]+coefficient*s1-s2;s2=s1;s1=s;}
+        const double power=std::max(0.0,s1*s1+s2*s2-coefficient*s1*s2);
+        result.features[band+2]=power;total+=power;
+    }
+    for(std::size_t i=2;i<10;++i)result.features[i]=total>1e-12?result.features[i]/total:0;
+    validateFeatures(result.features);return result;
+}
 inline AudioSample readWave(const std::string& path) {
     std::ifstream in(path,std::ios::binary|std::ios::ate);
     if(!in)throw std::runtime_error("cannot open WAV");
@@ -32,34 +66,12 @@ inline AudioSample readWave(const std::string& path) {
         const auto padded=size+(size%2);if(padded>bytes.size()-body)throw std::runtime_error("missing WAV padding");p=body+padded;
     }
     if(!format||!data||count<rate/20||count>static_cast<std::size_t>(rate)*2)throw std::runtime_error("WAV duration must be 50 ms..2 s");
-    AudioSample result;result.rate=rate;result.frames=count;
-    std::vector<double> samples(count);double energy=0;std::size_t crossings=0;
-    std::uint64_t hash=14695981039346656037ULL;
-    auto hashByte=[&](unsigned char b){hash^=b;hash*=1099511628211ULL;};
-    for(int i=0;i<4;++i)hashByte(static_cast<unsigned char>((rate>>(8*i))&255));
-    for(std::size_t i=0;i<count;++i){const auto raw=u16(start+2*i);const auto value=raw>=32768?static_cast<int>(raw)-65536:static_cast<int>(raw);
-        samples[i]=value/32768.0;energy+=samples[i]*samples[i];
-        if(i&&((samples[i]>=0)!=(samples[i-1]>=0)))++crossings;
-        hashByte(bytes[start+2*i]);hashByte(bytes[start+2*i+1]);
-    }
-    std::ostringstream id;id<<std::hex<<hash<<'-'<<rate<<'-'<<count;result.fingerprint=id.str();
-    result.features[0]=std::sqrt(energy/count);result.features[1]=static_cast<double>(crossings)/(count-1);
-    // Eight fixed Goertzel probes: explicit signal-processing priors, no learned encoder.
-    // Hann window and energy normalization reduce sensitivity to phase and gain.
-    constexpr std::array<double,8> frequencies{125,250,500,1000,2000,3000,4000,6000};
-    constexpr double pi=3.14159265358979323846;double total=0;
-    for(std::size_t i=0;i<count;++i)samples[i]*=0.5-0.5*std::cos(2*pi*i/(count-1));
-    for(std::size_t band=0;band<frequencies.size();++band){
-        if(frequencies[band]>=rate/2.0)continue;
-        const double coefficient=2*std::cos(2*pi*frequencies[band]/rate);double s1=0,s2=0;
-        for(std::size_t i=0;i<count;++i){
-            const double s=samples[i]+coefficient*s1-s2;s2=s1;s1=s;}
-        const double power=std::max(0.0,s1*s1+s2*s2-coefficient*s1*s2);
-        result.features[band+2]=power;total+=power;
-    }
-    for(std::size_t i=2;i<10;++i)result.features[i]=total>1e-12?result.features[i]/total:0;
-    validateFeatures(result.features);return result;
+    std::vector<std::int16_t> pcm(count);
+    for(std::size_t i=0;i<count;++i){const auto raw=u16(start+2*i);
+        pcm[i]=static_cast<std::int16_t>(raw>=32768?static_cast<int>(raw)-65536:static_cast<int>(raw));}
+    return analyzePcm16(pcm,rate);
 }
+
 struct AudioPrediction {std::optional<std::string> label;double distance=0;std::uint64_t revision=0;};
 class AudioLearner {
 public:

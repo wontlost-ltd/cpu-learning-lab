@@ -4,6 +4,10 @@
 
 | 路径 | 职责 |
 | --- | --- |
+| `include/cpuai/network_protocol.hpp` | 有界、版本化批次与设备来源绑定 |
+| `adapters/network/` | 可选 POSIX/OpenSSL TLS、离线配对、授权和撤销 |
+| `apps/link/main.cpp` | TLS 服务／发送端、持久确认与连接期限 |
+| `tests/integration/network_cli_test.py` | 真实回环 TLS、凭据、来源、断线、超时与错误回执 |
 | `include/cpuai/durable_file.hpp` | 原生独占文件、完整写入、平台同步与尾截断 |
 | `include/cpuai/device_sync.hpp` | 稳定事件身份、CRC 帧、恢复、冲突检测、回执与幂等同步 |
 | `apps/sync/main.cpp` | 同机文件节点初始化、显式经验记录、状态和补传 |

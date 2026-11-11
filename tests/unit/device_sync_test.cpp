@@ -31,6 +31,7 @@ int main(){
         auto r=source.syncTo(target,1);require(!r.complete&&r.delivered==1,"bounded sync batch");r=source.syncTo(target,1);require(r.complete&&r.delivered==1,"next bounded batch");
         rejects([&]{source.syncTo(target,0);});rejects([&]{source.syncTo(target,129);});
     }
+    rejects([&]{DurableFile overwrite(a,true,true);});
     // A restored old receiver must be reconciled even if the sender already has receipts.
     const auto restored=root/"restored.log";std::vector<unsigned char> old;
     {DeviceJournal t(restored,"replacement-phone");}

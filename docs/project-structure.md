@@ -4,6 +4,11 @@
 
 | 路径 | 职责 |
 | --- | --- |
+| `include/cpuai/durable_file.hpp` | 原生独占文件、完整写入、平台同步与尾截断 |
+| `include/cpuai/device_sync.hpp` | 稳定事件身份、CRC 帧、恢复、冲突检测、回执与幂等同步 |
+| `apps/sync/main.cpp` | 同机文件节点初始化、显式经验记录、状态和补传 |
+| `tests/unit/device_sync_test.cpp` | 接收／回执中断、旧快照补传、尾损坏与资源边界 |
+| `tests/integration/sync_cli_test.py` | 原生跨进程重启、生产者强制结束、持久确认与补传 |
 | `include/cpuai/audio_stream.hpp` | 有界连续帧、消费确认、窗口切片／取消、暂停和断流片段、WAV 录制 |
 | `adapters/audio/` | 可停止 PCM 管道输入与可选 PortAudio 默认麦克风 |
 | `apps/listen/main.cpp` | 连续识别、有限捕获、显式反馈快照加载、JSON Lines |

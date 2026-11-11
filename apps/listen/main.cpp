@@ -1,4 +1,5 @@
 #include "cpuai/audio_stream.hpp"
+#include "cpuai/device_sync.hpp"
 #include "stdin_input.hpp"
 #include <chrono>
 #include <csignal>
@@ -32,7 +33,7 @@ int main(int argc,char** argv)try{
         return 0;
     }
     if(argc==2&&std::string(argv[1])=="--help"){
-        std::cout<<"cpu-listen --stdin|--microphone RATE WINDOW_MS MODEL MAX_WINDOWS [--capture NEW_DIR MAX_FILES] [--reload]\n"
+        std::cout<<"cpu-listen --stdin|--microphone RATE WINDOW_MS MODEL MAX_WINDOWS [--capture NEW_DIR MAX_FILES] [--reload] [--journal PATH DEVICE]\n"
             <<"MODEL '-' starts untaught. Input: mono signed PCM16LE (stdin) or default PortAudio device.\n"
             <<"Limits: RATE 8000..48000, WINDOW_MS 50..2000, MAX_WINDOWS 1..1000000, MAX_FILES 1..256.\n"
             <<"JSON lines on stdout. No raw recordings unless --capture. --reload checks explicit MODEL at window boundaries.\n";
@@ -47,9 +48,11 @@ int main(int argc,char** argv)try{
     const auto rate=static_cast<std::uint32_t>(number(argv[2],48000));
     const auto windowMs=static_cast<unsigned>(number(argv[3],2000));
     const auto maximum=number(argv[5],1000000);if(maximum==0)throw std::runtime_error("MAX_WINDOWS must be positive");
+    std::filesystem::path journalPath;std::string device;
     std::filesystem::path capture;std::size_t maxFiles=0;bool reload=false;
     for(int i=6;i<argc;++i){const std::string arg=argv[i];
-        if(arg=="--reload"&&!reload){reload=true;}
+        if(arg=="--journal"&&journalPath.empty()&&i+2<argc){journalPath=argv[++i];device=argv[++i];if(journalPath.empty())throw std::runtime_error("empty journal path");}
+        else if(arg=="--reload"&&!reload){reload=true;}
         else if(arg=="--capture"&&capture.empty()&&i+2<argc){capture=argv[++i];maxFiles=static_cast<std::size_t>(number(argv[++i],256));if(capture.empty()||maxFiles==0)throw std::runtime_error("invalid capture settings");}
         else throw std::runtime_error("invalid or duplicate option");
     }
@@ -57,6 +60,8 @@ int main(int argc,char** argv)try{
     cpuai::PcmWindowStream pipeline(rate,windowMs,2);
     auto model=modelPath=="-"?cpuai::AudioLearner{}:cpuai::AudioLearner::load(modelPath);
     if(!capture.empty()&&!std::filesystem::create_directory(capture))throw std::runtime_error("capture directory must be new; refusing overwrite");
+    std::optional<cpuai::DeviceJournal> journal;std::string session;
+    if(!journalPath.empty()){cpuai::validateDeviceId(device);journal.emplace(journalPath,device);session=cpuai::newSessionId();}
     std::signal(SIGINT,stop);std::signal(SIGTERM,stop);
     std::optional<cpuai::StdinPcmInput> input;
     if(mode=="--stdin")input.emplace();
@@ -101,10 +106,16 @@ int main(int argc,char** argv)try{
                 std::string captured;
                 if(files<maxFiles){const auto path=capture/("window-"+std::to_string(window->sequence)+".wav");
                     cpuai::writeWave(path.string(),window->pcm,rate);captured=path.generic_string();++files;}
+                std::string eventId;
+                if(journal){cpuai::DeviceEvent event;event.id={device,session,window->sequence};
+                    event.recordedAtMs=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                    event.segment=window->segment;event.startFrame=window->startFrame;event.sample=window->sample;
+                    journal->receive({event});eventId=device+"/"+session+"/"+std::to_string(event.id.sequence);}
                 std::cout<<"{\"type\":\"prediction\",\"sequence\":"<<window->sequence<<",\"segment\":"<<window->segment
                     <<",\"start_frame\":"<<window->startFrame<<",\"frames\":"<<window->sample.frames
                     <<",\"revision\":"<<prediction.revision<<",\"label\":"<<(prediction.label?json(*prediction.label):"null")
                     <<",\"distance\":"<<prediction.distance<<",\"fingerprint\":"<<json(window->sample.fingerprint)
+                    <<",\"durable_event\":"<<(eventId.empty()?"null":json(eventId))
                     <<",\"processing_ms\":"<<elapsed<<",\"capture\":"<<(captured.empty()?"null":json(captured))<<"}"<<std::endl;
                 ++emitted;
             }

@@ -18,7 +18,7 @@ Incomplete or interrupted fits never replace a valid cache. Truncated displays m
 
 ## Storage accounting
 
-A custom PMR memory_resource backs both the graph vector and canonical index. It rejects allocations exceeding maxStorageBytes, tracking currently requested bytes and peak requested bytes, including overlapping vector buffers during growth. Nodes/keys have no internal dynamic allocation. A failed index insertion rolls back the appended node, retaining valid IDs and index invariants.
+A custom PMR memory_resource backs both the graph vector and canonical index. It rejects allocations exceeding maxStorageBytes, tracking currently requested bytes and peak requested bytes, including overlapping vector buffers during growth. Nodes/keys have no internal dynamic allocation. A failed index insertion rolls back the appended node, retaining valid IDs and index invariants. Index construction is inside the same budget guard: MSVC allocates an empty-map sentinel while libstdc++ does not; even a zero-byte budget must return memory_limit without an escaping allocation exception.
 
 This is not a process RSS budget. The session object, returned expression strings, fit ID vectors/cache, teaching examples, allocator metadata and stack are outside this resource. Process RSS is reported independently by the Linux benchmark collector. No system isolation or hard realtime guarantee is claimed.
 

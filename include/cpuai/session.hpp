@@ -17,14 +17,14 @@ class SearchSession {
     SearchOptions options_;
     BudgetResource memory_;
     std::pmr::vector<DagNode> graph_;
-    std::pmr::map<Coefficients,std::size_t> index_;
+    std::optional<std::pmr::map<Coefficients,std::size_t>> index_;
     std::optional<StopReason> terminal_;
     int depth_=1, operation_=0;
     std::size_t width_=8,i_=0,j_=0,evaluated_=0,edges_=0;
     void add(DagNode node) {
         // Roll back the graph on index allocation failure: no dangling index/child IDs.
         graph_.push_back(node);
-        try { index_.emplace(node.coefficients,graph_.size()-1); }
+        try { index_->emplace(node.coefficients,graph_.size()-1); }
         catch(...) {graph_.pop_back();throw;}
         if(node.operation!='x' && node.operation!='c')edges_+=2;
     }
@@ -50,9 +50,11 @@ class SearchSession {
         return "("+text(n.left)+n.operation+text(n.right)+")";
     }
 public:
-    explicit SearchSession(SearchOptions options={}):options_(options),memory_(options.maxStorageBytes),graph_(&memory_),index_(&memory_) {
+    explicit SearchSession(SearchOptions options={}):options_(options),memory_(options.maxStorageBytes),graph_(&memory_) {
         validateOptions(options_);
         try {
+            // MSVC allocates the empty map sentinel here; keep it inside the budget guard.
+            index_.emplace(&memory_);
             DagNode x;x.coefficients[1]=1;x.degree=1;x.operation='x';add(x);
             for(int c=-3;c<=3;++c){DagNode n;n.coefficients[0]=c;add(n);}
         } catch(const MemoryLimit&){terminal_=StopReason::memory_limit;}
@@ -67,9 +69,10 @@ public:
     std::size_t peakStorageBytes()const{return memory_.peak();}
     std::size_t edges()const{return edges_;}
     bool validDag()const {
-        if(index_.size()!=graph_.size())return false;
+        if(!index_)return graph_.empty();
+        if(index_->size()!=graph_.size())return false;
         for(std::size_t id=0;id<graph_.size();++id){const auto& n=graph_[id];
-            if(index_.at(n.coefficients)!=id)return false;
+            if(index_->at(n.coefficients)!=id)return false;
             if(n.operation!='c' && n.operation!='x' && (n.left>=id || n.right>=id))return false;
         }
         return true;
@@ -92,7 +95,7 @@ public:
             if(evaluated_-start==control.maxCombinations)return StopReason::work_slice;
             ++operation_;++evaluated_;
             const auto node=combineNodes(graph_[i_],graph_[j_],op,i_,j_,depth_);
-            if(!node || index_.contains(node->coefficients))continue;
+            if(!node || index_->contains(node->coefficients))continue;
             if(graph_.size()==options_.maxUnique){terminal_=StopReason::unique_limit;return *terminal_;}
             try {add(*node);}catch(const MemoryLimit&){terminal_=StopReason::memory_limit;return *terminal_;}
         }

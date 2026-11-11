@@ -73,6 +73,8 @@ int main() {
     CHECK(bounded.peakStorageBytes()<=small.maxStorageBytes && bounded.validDag());
     CHECK(bounded.run()==cpuai::StopReason::memory_limit);
     cpuai::SearchOptions empty;empty.maxStorageBytes=0;
+    cpuai::SearchSession noStorage(empty);
+    CHECK(noStorage.run()==cpuai::StopReason::memory_limit && noStorage.validDag());
     const auto noMemory=cpuai::infer(examples,empty);
     CHECK(noMemory.stopReason==cpuai::StopReason::memory_limit && !noMemory.complete());
     // A cancelled or memory-limited inference cannot be reported as an accepted skill.

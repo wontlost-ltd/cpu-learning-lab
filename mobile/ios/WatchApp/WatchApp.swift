@@ -52,7 +52,7 @@ import PhoneCore
         do {
             let granted=await withCheckedContinuation { c in AVAudioApplication.requestRecordPermission { c.resume(returning:$0) } }
             guard granted,!stopWanted else { throw PhoneError.invalid("麦克风未授权或采集已取消。") }
-            let session=AVAudioSession.sharedInstance();try session.setCategory(.record,mode:.measurement,options:[]);try session.setPreferredSampleRate(16000);try session.setActive(true)
+            let session=AVAudioSession.sharedInstance();try session.setCategory(.record,mode:.default,options:[]);try session.setActive(true)
             let engine=AVAudioEngine();self.engine=engine;let input=engine.inputNode,format=input.outputFormat(forBus:0),rate=format.sampleRate
             guard format.commonFormat == .pcmFormatFloat32,!format.isInterleaved,(1...2).contains(format.channelCount),rate>=8000,rate<=48000,rate.rounded()==rate else { throw PhoneError.invalid("当前音频格式不支持。") }
             let handle=try await store.startCapture(rate:UInt32(rate)) { [weak self] result in
@@ -66,7 +66,7 @@ import PhoneCore
                 guard let channels=buffer.floatChannelData else { handle.discard(frames:Int(buffer.frameLength));return }
                 handle.push(left:channels[0],right:buffer.format.channelCount==2 ? UnsafePointer(channels[1]):nil,frames:Int(buffer.frameLength))
             }
-            tap=true;engine.prepare();try engine.start();recording=true;busy=false;status="前台采集特征；不保存原始音频。"
+            tap=true;engine.prepare();try engine.start();recording=true;busy=false;status="前台采集特征（\(Int(rate)) Hz）；不保存原始音频。"
         } catch { status=error.localizedDescription;await stop(preserve:true) }
     }
     func stop(preserve:Bool=false) async {

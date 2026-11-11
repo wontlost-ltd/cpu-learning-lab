@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import PhoneCore
 
 @MainActor final class PhoneWatchRelay:ObservableObject {
@@ -24,6 +25,7 @@ import PhoneCore
         return try WatchIdentity(device:watch.device,phone:phone.device)
     }
     func restore(phone:Pairing?) async {
+        guard !busy else { return };busy=true;defer { busy=false }
         phonePair=phone
         do { watchPair=try PairingKeychain.load(account:"watch-pair");if watchPair != nil { _ = try identity();let store=try await PhoneStore.open(path:path,device:watchPair!.device);events=try await store.count();try await store.close() } }
         catch { status=error.localizedDescription }

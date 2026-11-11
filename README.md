@@ -1,6 +1,6 @@
 # CPU Learning Lab — 原生持续学习原型
 
-C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P5 iOS 原生采集端、可靠事件和配对 TLS；P4 真实设备和功耗验收仍待完成。
+C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P5 iOS/Apple Watch 前台采集、持久中继和配对 TLS；P4 真实设备和功耗验收仍待完成。
 
 用户提供输入输出示例，系统归纳可执行算术假设，保留歧义并主动求教。它是有明确先验和边界的程序归纳实验，尚不是通用白板智能。
 
@@ -20,6 +20,8 @@ C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用�
 - [P5 持久事件与同步设计](docs/adr/0007-durable-device-events.md)
 - [P5 配对与 TLS 设计](docs/adr/0008-paired-tls-transport.md)
 - [iOS 原生采集端](mobile/ios/README.md)
+- [Apple Watch 伴侣采集](mobile/ios/WatchApp/README.md)
+- [Watch 持久中继设计](docs/adr/0010-watch-collector-relay.md)
 - [iOS 采集设计与边界](docs/adr/0009-ios-collector.md)
 - [网络补传示例](examples/network-sync.md)
 - [离线补传示例](examples/device-sync.md)
@@ -194,3 +196,9 @@ WAV 限单声道 PCM16，8..48 kHz、50 ms..2 s。音频路径有输入大小与
 `mobile/ios` 提供 SwiftUI 应用、Swift Package 与可复现 XcodeGen 工程。音频回调只写有界 C++ 队列，后台复用同一特征提取和持久日志；配对凭据存入 Keychain，用户停止采集后显式通过 Apple TLS 客户端补传。iOS 不依赖 OpenSSL。
 
 默认不录音、不联网；未配对不能开始。后台、音频中断或路由变更时停止，不自动恢复。只保存／发送特征，暂不提供手机端模型教学／识别或学会事件。构建、真机签名和 iPhone→Mac 操作见 [iOS README](mobile/ios/README.md)。模拟器验证不能替代真实麦克风、噪声和功耗验收。
+
+## P5 穿戴步骤：Watch → iPhone → Mac
+
+Apple Watch 伴侣 App 复用同一 C++ 音频队列和日志，默认不采集，只在用户确认配置并授权后前台录入特征。手动 WatchConnectivity 补传最多 32 条／32 KiB，iPhone 先持久化再回执；手表保留原件，随后 iPhone 用独立 watch 凭据向 Mac 补传。
+
+系统配对关系是中继信任边界，密钥只留在 iPhone Keychain；没有硬件身份证明或后台传输承诺。iPhone ACK 不等于 Mac ACK，更不等于模型学会。构建与操作见 [Watch README](mobile/ios/WatchApp/README.md)，真实无线、手表麦克风和功耗仍待验收。

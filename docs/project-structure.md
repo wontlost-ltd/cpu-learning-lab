@@ -4,6 +4,10 @@
 
 | 路径 | 职责 |
 | --- | --- |
+| `mobile/ios/WatchApp/` | watchOS 伴侣界面、显式身份确认与前台采集 |
+| `mobile/ios/Sources/PhoneCore/WatchRelay.swift` | 有界中继 envelope、持久收件箱、重试与两级回执语义 |
+| `mobile/ios/Sources/PhoneCore/WatchLink.swift` | 手动激活的系统配对消息、10 秒等待、取消与一次性回调 |
+| `mobile/ios/App/WatchRelayPhone.swift` | iPhone 独立 watch Keychain、配置与 Mac 转发 |
 | `mobile/ios/` | SwiftUI 采集端、C ABI 桥接、Apple TLS、Keychain、Swift 单元和模拟器 UI 测试 |
 | `tests/unit/phone_bridge_test.cpp` | 同一桥接代码的跨平台固定队列、持久事件与批次测试 |
 | `tests/integration/phone_network_test.py` | Mac Apple TLS 客户端与 OpenSSL 接收端真实互通 |

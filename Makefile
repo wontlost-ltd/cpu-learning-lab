@@ -15,11 +15,15 @@ build/evaluation-tests: tests/unit/evaluation_test.cpp $(HEADERS) | build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 build/runtime-tests: tests/unit/runtime_test.cpp $(HEADERS) | build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
-test: build/cpu-learn build/learning-tests build/evaluation-tests build/runtime-tests
+build/skills-tests: tests/unit/skills_test.cpp $(HEADERS) | build
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+test: build/cpu-learn build/learning-tests build/evaluation-tests build/runtime-tests build/skills-tests
+	./build/skills-tests
 	./build/runtime-tests
 	./build/learning-tests
 	./build/evaluation-tests tests/evaluation/square-v1.exam
 	$(PYTHON) tests/integration/cli_test.py build/cpu-learn tests/evaluation/square-v1.exam
+	$(PYTHON) tests/integration/skills_cli_test.py build/cpu-learn tests/evaluation
 build/search-benchmark: benchmarks/search_benchmark.cpp $(HEADERS) | build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 benchmark: build/search-benchmark

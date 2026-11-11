@@ -9,6 +9,8 @@
 | `include/cpuai/runtime.hpp` | 控制令牌、截止时间、PMR 内存预算与计量 |
 | `include/cpuai/session.hpp` | DAG、可续算枚举、候选匹配 |
 | `include/cpuai/search.hpp` | 结果生成、共识预测和主动问题 |
+| `include/cpuai/skills.hpp` | 已验收版本、固定依赖、组合搜索、重复子流程提取、回放与恢复 |
+| `tests/unit/skills_test.cpp` | 新任务组合、抽象、版本回滚、失效候选与持久化 |
 | `include/cpuai/evaluation.hpp` | 冻结候选、独立测试及报告有效性检查 |
 | `tests/unit/runtime_test.cpp` | 缓存、修正、DAG、暂停、取消和资源预算 |
 | `benchmarks/` | 原生冷热／增量查询基准及环境记录 |

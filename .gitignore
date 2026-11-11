@@ -7,3 +7,7 @@
 *.journal
 /cpu-listen
 /cpu-sync
+
+*.pair
+*.pem
+/cpu-link

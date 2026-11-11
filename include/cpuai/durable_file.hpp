@@ -35,14 +35,14 @@ class DurableFile {
 #endif
     }
 public:
-    explicit DurableFile(const std::filesystem::path& path,bool create){
+    explicit DurableFile(const std::filesystem::path& path,bool create,bool exclusive=false){
         try{
 #ifdef _WIN32
-            handle_=CreateFileW(path.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,create?OPEN_ALWAYS:OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+            handle_=CreateFileW(path.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,create?(exclusive?CREATE_NEW:OPEN_ALWAYS):OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
             if(handle_==INVALID_HANDLE_VALUE)throw std::runtime_error("cannot open or lock journal");
             LARGE_INTEGER size;if(!GetFileSizeEx(handle_,&size)||size.QuadPart<0)throw std::runtime_error("cannot stat journal");size_=static_cast<std::uint64_t>(size.QuadPart);
 #else
-            fd_=::open(path.c_str(),O_RDWR|O_CLOEXEC|(create?O_CREAT:0),0600);
+            fd_=::open(path.c_str(),O_RDWR|O_CLOEXEC|(create?O_CREAT:0)|(create&&exclusive?O_EXCL:0),0600);
             if(fd_<0||flock(fd_,LOCK_EX|LOCK_NB)!=0)throw std::runtime_error("cannot open or lock journal");
             struct stat st{};if(fstat(fd_,&st)!=0||!S_ISREG(st.st_mode)||st.st_size<0)throw std::runtime_error("journal must be a regular file");size_=static_cast<std::uint64_t>(st.st_size);
 #endif

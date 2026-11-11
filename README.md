@@ -1,6 +1,6 @@
 # CPU Learning Lab — 原生持续学习原型
 
-C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P5 可靠事件与文件同步基础；P4 真实设备和功耗验收仍待完成。
+C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P5 可靠事件、离线配对与可选 TLS 传输；P4 真实设备和功耗验收仍待完成。
 
 用户提供输入输出示例，系统归纳可执行算术假设，保留歧义并主动求教。它是有明确先验和边界的程序归纳实验，尚不是通用白板智能。
 
@@ -18,6 +18,8 @@ C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用�
 - [连续音频操作示例](examples/live-audio.md)
 - [本地声音教学示例](examples/audio-session.md)
 - [P5 持久事件与同步设计](docs/adr/0007-durable-device-events.md)
+- [P5 配对与 TLS 设计](docs/adr/0008-paired-tls-transport.md)
+- [网络补传示例](examples/network-sync.md)
 - [离线补传示例](examples/device-sync.md)
 - [贡献说明](CONTRIBUTING.md)
 
@@ -176,3 +178,11 @@ WAV 限单声道 PCM16，8..48 kHz、50 ms..2 s。音频路径有输入大小与
 `cpu-listen ... --journal PATH DEVICE` 显式启用每窗口持久化，输出 durable_event；默认不写日志。接收端提交后回执中断可以重试而不重复插入，接收端恢复旧快照后也会检查实际持有的事件并补传。日志限 4096 事件／64 来源／8 目标／16 MiB，满后拒绝，不静默淘汰。
 
 当前没有手机／穿戴应用或网络服务；监听和同步不能同时打开同一日志。用户标签事件只保存、复制，不自动教学，也不触发 ChronoSynth 学会事件。强制同步有额外 I/O 和功耗成本，尚未实测。操作见[补传示例](examples/device-sync.md)，可靠性范围见 [ADR 0007](docs/adr/0007-durable-device-events.md)。
+
+## P5 网络步骤：配对、鉴权与 TLS 补传
+
+可选 `CPUAI_WITH_NETWORK=ON` 构建原生 cpu-link（macOS/Linux，OpenSSL 3）。操作者离线授权设备，配对包绑定接收端证书指纹、设备 ID 和独立密钥；客户端先验证证书再发送密钥，服务端逐批检查授权与事件来源，支持撤销和密钥轮换。
+
+真实 TCP/TLS 传输沿用持久事件确认和幂等重试。单批最多 128 条，单连接最多 32 批，长度与收发期限有界；提交后断线可重试。默认只监听回环地址，尚无远程自动注册、移动 App 或生产级网络服务。默认构建继续不依赖 OpenSSL。
+
+详见[构建与配对操作](examples/network-sync.md)和 [ADR 0008](docs/adr/0008-paired-tls-transport.md)。下一步仍按原路线接手机采集端、穿戴扩展和由执行评估驱动的 ChronoSynth 适配，视频不在本阶段新增。

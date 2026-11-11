@@ -1,6 +1,6 @@
 # CPU Learning Lab — 原生持续学习原型
 
-C++20、CPU-only、无第三方运行时依赖、无 LLM/API 调用。当前阶段：P3。
+C++20、CPU-only、无第三方运行时依赖、无 LLM/API 调用。当前阶段：P4 离线音频与观察流原型（真实采集和功耗验收待完成）。
 
 用户提供输入输出示例，系统归纳可执行算术假设，保留歧义并主动求教。它是有明确先验和边界的程序归纳实验，尚不是通用白板智能。
 
@@ -13,6 +13,8 @@ C++20、CPU-only、无第三方运行时依赖、无 LLM/API 调用。当前阶�
 - [P2 CPU 运行时与资源边界](docs/adr/0003-cpu-runtime.md)
 - [可复现基准](benchmarks/README.md)
 - [P3 技能组合与版本设计](docs/adr/0004-skill-composition.md)
+- [P4 音频与观察流设计](docs/adr/0005-observations-and-audio.md)
+- [本地声音教学示例](examples/audio-session.md)
 - [贡献说明](CONTRIBUTING.md)
 
 ## 构建与测试
@@ -138,3 +140,13 @@ GitHub 配置 Linux/macOS/Windows CI；历史运行曾因账户付款／消费�
 开放式概念创造、梯度训练、音视频学习、硬实时保证、系统级内存隔离和断电原子保存。P3 的抽象是从重复调用流程提取可复用程序，不是发明任意新概念；回放是回归验收，不是神经训练。已实现 DAG、会话内暂停续算、缓存及增量筛选，但缓存与搜索游标不持久化；内核实例为单调用者设计。未测量能耗，也没有证明优于 GPU 或其他语言。
 
 下一阶段 P4：观察事件流、时间对齐与首个感知适配器。源码未指定开源许可证，公开或分发前由项目所有者决定。
+
+## P4：本地声音教学与观察流
+
+`audio-teach ID LABEL WAV` 增量记录用户提供的声音标签；同 ID 可纠错。`audio-ask WAV` 使用有界最近邻分类，距离远或标签冲突时返回未知；`audio-save/load PATH` 保存恢复。没有预训练编码器，当前特征是人工选定的 RMS、过零率与八个频率探针，适合先做简单声音实验，不能宣称能理解任意声音。
+
+`audio-exam MANIFEST` 冻结当前模型后评价 3..128 条独立样本，拒绝与教学相同的 PCM，不把测试答案写回学习。CLI 报告测试集范围内的 correct/unknown 与模型修订。
+
+`observe SOURCE SEQ TIME OFFSET ERROR WAV` 接收有时间信息的音频特征事件；`align A B MS` 按显式时钟偏移与误差上界对齐。默认缓冲 64 条，满时明确拒绝并允许排空后重试。`stream-pop` 取出最早事件；`stream-stats` 查看接受、拒绝与峰值。事件缓冲仅存在于当前进程。
+
+WAV 限单声道 PCM16，8..48 kHz、50 ms..2 s。音频路径有输入大小与样本数上限，尚不支持 `limits`/取消令牌。没有麦克风、语音识别、视觉、自动时钟同步或穿戴设备驱动。真实录音泛化、持续输入调度和功耗仍需后续实测。详见[教学示例](examples/audio-session.md)与[设计边界](docs/adr/0005-observations-and-audio.md)。

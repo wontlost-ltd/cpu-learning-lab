@@ -1,4 +1,5 @@
 #include "cpuai/skills.hpp"
+#include "cpuai/audio.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -14,6 +15,8 @@ std::string argument(std::istringstream& in) {
 int main() {
     cpuai::Learner learner;
     cpuai::SkillLibrary library;
+    cpuai::AudioLearner audio;
+    cpuai::ObservationStream stream;
     cpuai::SearchOptions limits;
     std::size_t sliceLimit=std::numeric_limits<std::size_t>::max();
     unsigned long deadlineMs=1000;
@@ -26,7 +29,7 @@ int main() {
         if(cancelNext){std::stop_source source;source.request_stop();c.cancellation=source.get_token();cancelNext=false;}
         return c;
     };
-    std::cout<<"CPU Learning Lab P3: teach NAME X Y | ask NAME X | show NAME | next NAME | exam NAME FILE | save PATH | load PATH | limits OPS MS BYTES | slice OPS | cancel-next | stats | publish/compose NAME EXAM | plan NAME | run NAME X | versions NAME | rollback NAME ID | mine | abstract NAME INDEX EXAM | replay | save-library/load-library PATH | quit\n";
+    std::cout<<"CPU Learning Lab P4: teach NAME X Y | ask NAME X | show NAME | next NAME | exam NAME FILE | save PATH | load PATH | limits OPS MS BYTES | slice OPS | cancel-next | stats | publish/compose NAME EXAM | plan NAME | run NAME X | versions NAME | rollback NAME ID | mine | abstract NAME INDEX EXAM | replay | save-library/load-library PATH | audio-teach ID LABEL WAV | audio-ask WAV | audio-exam MANIFEST | audio-save/audio-load PATH | observe SOURCE SEQ TIME OFFSET ERROR WAV | align A B MS | stream-pop | stream-stats | quit\n";
     std::string line;
     while (std::getline(std::cin,line)) try {
         std::istringstream in(line); std::string cmd; in>>cmd;
@@ -110,6 +113,31 @@ int main() {
             const auto path=argument(in);endOfCommand(in);
             if(cmd=="save-library")library.save(path);else library=cpuai::SkillLibrary::load(path);
             std::cout<<(cmd=="save-library"?"skill library saved":"skill library loaded")<<'\n';
+        } else if(cmd=="audio-teach") {
+            const auto id=argument(in),label=argument(in),path=argument(in);endOfCommand(in);
+            audio.teach(id,label,cpuai::readWave(path));std::cout<<"audio lesson recorded revision="<<audio.revision()<<'\n';
+        } else if(cmd=="audio-ask") {
+            const auto path=argument(in);endOfCommand(in);const auto p=audio.predict(cpuai::readWave(path));
+            std::cout<<"audio label="<<std::quoted(p.label.value_or("unknown"))<<" known="<<p.label.has_value()<<" distance="<<p.distance<<" revision="<<p.revision<<'\n';
+        } else if(cmd=="audio-save"||cmd=="audio-load") {
+            const auto path=argument(in);endOfCommand(in);if(cmd=="audio-save")audio.save(path);else audio=cpuai::AudioLearner::load(path);
+            std::cout<<"audio model "<<(cmd=="audio-save"?"saved":"loaded")<<'\n';
+        } else if(cmd=="audio-exam") {
+            const auto path=argument(in);endOfCommand(in);const auto r=cpuai::audioExam(audio,path);
+            std::cout<<"audio exam revision="<<r.revision<<" cases="<<r.cases<<" correct="<<r.correct<<" unknown="<<r.unknown<<'\n';
+        } else if(cmd=="observe") {
+            cpuai::Observation o;o.source=argument(in);
+            if(!(in>>o.sequence>>o.timestampMs>>o.offsetMs>>o.uncertaintyMs))throw std::runtime_error("observe SOURCE SEQ TIME OFFSET ERROR WAV");
+            const auto path=argument(in);endOfCommand(in);o.features=cpuai::readWave(path).features;
+            std::cout<<"observation "<<cpuai::streamStatusName(stream.push(o))<<'\n';
+        } else if(cmd=="align") {
+            const auto a=argument(in),b=argument(in);std::int64_t tolerance;if(!(in>>tolerance))throw std::runtime_error("align A B MS");endOfCommand(in);
+            const auto pairs=stream.align(a,b,tolerance);std::cout<<"aligned pairs="<<pairs.size()<<'\n';
+            for(const auto& p:pairs)std::cout<<p.first<<' '<<p.second<<" worst_ms="<<p.worstSeparationMs<<'\n';
+        } else if(cmd=="stream-pop") {
+            endOfCommand(in);std::cout<<"stream popped="<<stream.pop()<<'\n';
+        } else if(cmd=="stream-stats") {
+            endOfCommand(in);const auto& m=stream.metrics();std::cout<<"stream buffered="<<stream.events().size()<<" accepted="<<m.accepted<<" rejected="<<m.rejected<<" peak="<<m.peak<<'\n';
         } else if (cmd=="limits") {
             unsigned long ops,ms,bytes;
             if(!(in>>ops>>ms>>bytes) || ms>60000)throw std::runtime_error("limits OPS MS BYTES; MS <=60000");

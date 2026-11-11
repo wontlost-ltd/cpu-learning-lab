@@ -1,0 +1,23 @@
+{
+  "scope": "synthetic tone; hot file cache; read+features+one-label prediction; no hardware/power measurement",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+  "results": [
+    {
+      "iterations": 30,
+      "sample_rate": 16000,
+      "frames": 1600,
+      "lessons": 1,
+      "p50_ms": 0.068825,
+      "p95_ms": 0.127443
+    },
+    {
+      "iterations": 30,
+      "sample_rate": 48000,
+      "frames": 96000,
+      "lessons": 1,
+      "p50_ms": 5.72112,
+      "p95_ms": 8.61868
+    }
+  ]
+}

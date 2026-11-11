@@ -4,6 +4,10 @@
 
 | 路径 | 职责 |
 | --- | --- |
+| `include/cpuai/observations.hpp` | 有界观察流、来源水位、背压、显式时钟误差对齐 |
+| `include/cpuai/audio.hpp` | PCM16 WAV 解码、固定信号特征、用户教学分类、持久化、独立考试 |
+| `tests/unit/observations_test.cpp` | 重复、迟到、满队列重试、时间误差与来源限制 |
+| `tests/integration/audio_cli_test.py` | 原生音频教学／纠错／留出测试／重启及损坏输入 |
 | `include/cpuai/learner.hpp` | 学习 API、修订和示例存储；header-only |
 | `include/cpuai/polynomial.hpp` | 精确多项式身份、数值执行和域检查 |
 | `include/cpuai/runtime.hpp` | 控制令牌、截止时间、PMR 内存预算与计量 |

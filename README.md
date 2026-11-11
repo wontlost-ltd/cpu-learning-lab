@@ -1,6 +1,6 @@
 # CPU Learning Lab — 原生持续学习原型
 
-C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P4 连续音频管线与可选麦克风入口（真实设备和功耗验收待完成）。
+C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P5 可靠事件与文件同步基础；P4 真实设备和功耗验收仍待完成。
 
 用户提供输入输出示例，系统归纳可执行算术假设，保留歧义并主动求教。它是有明确先验和边界的程序归纳实验，尚不是通用白板智能。
 
@@ -17,6 +17,8 @@ C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用�
 - [P4 连续音频与反馈设计](docs/adr/0006-continuous-audio.md)
 - [连续音频操作示例](examples/live-audio.md)
 - [本地声音教学示例](examples/audio-session.md)
+- [P5 持久事件与同步设计](docs/adr/0007-durable-device-events.md)
+- [离线补传示例](examples/device-sync.md)
 - [贡献说明](CONTRIBUTING.md)
 
 ## 构建与测试
@@ -166,3 +168,11 @@ WAV 限单声道 PCM16，8..48 kHz、50 ms..2 s。音频路径有输入大小与
 可选 `-DCPUAI_WITH_PORTAUDIO=ON` 构建连接系统默认麦克风（另需安装 PortAudio）；使用 `--microphone` 代替 `--stdin`。`--reload` 允许用户在另一进程纠错并保存模型，监听进程在窗口边界采用新的完整快照，损坏更新不会替换当前模型。实时加载不是独立验收认证，也没有把预测当作教学标签。
 
 完整命令、权限、构建与计量边界见[连续音频示例](examples/live-audio.md)和[ADR 0006](docs/adr/0006-continuous-audio.md)。真实麦克风、噪声泛化、跨设备时钟和能耗仍待实测。
+
+## P5 基础：持久事件与幂等补传
+
+原生 `cpu-sync` 为音频特征经验提供有界日志与同机文件同步。稳定身份由设备、会话和序号组成；相同身份的相同内容去重，不同内容报冲突。完整帧写入并完成系统同步后才确认；不完整尾写入可恢复，完整损坏不会被自动删除。
+
+`cpu-listen ... --journal PATH DEVICE` 显式启用每窗口持久化，输出 durable_event；默认不写日志。接收端提交后回执中断可以重试而不重复插入，接收端恢复旧快照后也会检查实际持有的事件并补传。日志限 4096 事件／64 来源／8 目标／16 MiB，满后拒绝，不静默淘汰。
+
+当前没有手机／穿戴应用或网络服务；监听和同步不能同时打开同一日志。用户标签事件只保存、复制，不自动教学，也不触发 ChronoSynth 学会事件。强制同步有额外 I/O 和功耗成本，尚未实测。操作见[补传示例](examples/device-sync.md)，可靠性范围见 [ADR 0007](docs/adr/0007-durable-device-events.md)。

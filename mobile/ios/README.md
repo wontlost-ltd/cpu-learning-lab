@@ -6,7 +6,7 @@ iOS 17+、SwiftUI、AVAudioEngine、Network.framework、Security/Keychain、Cryp
 
 ## 在 Mac 构建与运行
 
-需要完整 Xcode（选中对应 Command Line Tools）、C++20 工具链、Homebrew 的 xcodegen。应用工程从仓库中的 project.yml 可复现生成，不提交个人签名设置。
+需要完整 Xcode 26 或更新版本（选中对应 Command Line Tools，旧 Xcode 的 libc++ 缺少 std::stop_token）、C++20 工具链、Homebrew 的 xcodegen。应用工程从仓库中的 project.yml 可复现生成，不提交个人签名设置。
 
 ```sh
 brew install xcodegen

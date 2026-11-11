@@ -11,6 +11,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - name: Select Xcode 26 C++20 toolchain
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
       - run: |
           brew list openssl@3 || brew install openssl@3
           brew list xcodegen || brew install xcodegen

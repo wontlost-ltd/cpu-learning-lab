@@ -4,7 +4,7 @@
 
 沿 P5 原路线先支持用户现有 iPhone/Mac 组合。SwiftUI 负责界面，AVAudioEngine 负责系统麦克风，C ABI 复用 C++20 归纳项目的音频特征、持久事件和版本化批次。Apple Network/Security/CryptoKit 实现 TLS 客户端，iOS 不依赖 OpenSSL。默认桌面应用保持原依赖边界。
 
-交付包括源码、Swift Package、XcodeGen 工程描述、测试、构建与配对操作。没有真机签名安装、App Store 发布、后台采集、视频、Android／眼镜／手表或 ChronoSynth 适配。
+构建需要 Xcode 26 或更新工具链以提供完整的 C++20 stop_token 支持，App 部署目标仍为 iOS 17+；CI 在 macOS 15 上显式选择镜像预装的 Xcode 26.3。交付包括源码、Swift Package、XcodeGen 工程描述、测试、构建与配对操作。没有真机签名安装、App Store 发布、后台采集、视频、Android／眼镜／手表或 ChronoSynth 适配。
 
 ## 音频线程与资源边界
 

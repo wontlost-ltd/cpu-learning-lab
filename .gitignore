@@ -2,3 +2,4 @@
 /cpu-learn
 /learning-tests
 *.state
+*.library

@@ -1,4 +1,4 @@
-#include "cpuai/evaluation.hpp"
+#include "cpuai/skills.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -13,6 +13,7 @@ std::string argument(std::istringstream& in) {
 }
 int main() {
     cpuai::Learner learner;
+    cpuai::SkillLibrary library;
     cpuai::SearchOptions limits;
     std::size_t sliceLimit=std::numeric_limits<std::size_t>::max();
     unsigned long deadlineMs=1000;
@@ -25,7 +26,7 @@ int main() {
         if(cancelNext){std::stop_source source;source.request_stop();c.cancellation=source.get_token();cancelNext=false;}
         return c;
     };
-    std::cout<<"CPU Learning Lab P2: teach NAME X Y | ask NAME X | show NAME | next NAME | exam NAME FILE | save PATH | load PATH | limits OPS MS BYTES | slice OPS | cancel-next | stats | quit\n";
+    std::cout<<"CPU Learning Lab P3: teach NAME X Y | ask NAME X | show NAME | next NAME | exam NAME FILE | save PATH | load PATH | limits OPS MS BYTES | slice OPS | cancel-next | stats | publish/compose NAME EXAM | plan NAME | run NAME X | versions NAME | rollback NAME ID | mine | abstract NAME INDEX EXAM | replay | save-library/load-library PATH | quit\n";
     std::string line;
     while (std::getline(std::cin,line)) try {
         std::istringstream in(line); std::string cmd; in>>cmd;
@@ -71,6 +72,44 @@ int main() {
                 <<" revision="<<frozen.revision<<" accuracy="<<report.accuracy()
                 <<" passed_on_suite="<<report.passedOnSuite()
                 <<" current="<<cpuai::isCurrent(learner,frozen)<<"; evaluation only, no learning\n";
+        } else if(cmd=="publish" || cmd=="compose" || cmd=="abstract") {
+            const auto name=argument(in);unsigned long index=0;
+            if(cmd=="abstract" && !(in>>index))throw std::runtime_error("abstract NAME INDEX EXAM");
+            const auto path=argument(in);endOfCommand(in);auto c=control();
+            auto candidate=cmd=="publish"?library.prepareLearned(learner,name,limits,c)
+                :cmd=="compose"?library.prepareComposition(learner,name,{},c)
+                :library.prepareAbstraction(learner,name,index,c);
+            const auto& version=library.accept(learner,candidate,cpuai::loadExam(path),c);
+            std::cout<<"accepted "<<name<<"@"<<version.ref.id<<" steps="<<version.program.steps.size()
+                <<"; scoped to suite "<<version.exam.id<<'\n';
+        } else if(cmd=="plan") {
+            const auto name=argument(in);endOfCommand(in);
+            const auto p=library.plan(learner,name,{},control());
+            std::cout<<"programs_tested="<<p.tested<<" hypotheses="<<p.candidates.size()<<" complete="<<p.complete<<'\n';
+            for(const auto& c:p.candidates)std::cout<<"  "<<c.expression.text<<'\n';
+        } else if(cmd=="run") {
+            const auto name=argument(in);double x;if(!(in>>x))throw std::runtime_error("run NAME X");endOfCommand(in);
+            const auto y=library.run(name,x);std::cout<<y<<" [accepted "<<name<<"@"<<library.active(name).ref.id<<"]\n";
+        } else if(cmd=="versions") {
+            const auto name=argument(in);endOfCommand(in);const auto versions=library.history(name);
+            for(const auto& ref:versions)std::cout<<ref.name<<"@"<<ref.id<<(library.active(name).ref.id==ref.id?" active":" historical")<<'\n';
+            if(versions.empty())std::cout<<"no accepted versions\n";
+        } else if(cmd=="rollback") {
+            const auto name=argument(in);cpuai::VersionId id;if(!(in>>id))throw std::runtime_error("rollback NAME ID");endOfCommand(in);
+            library.rollback(name,id);std::cout<<"activated "<<name<<"@"<<id<<'\n';
+        } else if(cmd=="mine") {
+            endOfCommand(in);const auto patterns=library.patterns();
+            for(std::size_t i=0;i<patterns.size();++i){std::cout<<"pattern="<<i<<" support="<<patterns[i].support;
+                for(const auto& ref:patterns[i].steps){std::cout<<" "<<ref.name<<"@"<<ref.id;}
+                std::cout<<'\n';}
+            if(patterns.empty())std::cout<<"no repeated accepted subroutine\n";
+        } else if(cmd=="replay") {
+            endOfCommand(in);const auto r=library.replay(control());
+            std::cout<<"replay cases="<<r.cases<<" correct="<<r.correct<<" calls="<<r.calls<<" complete="<<r.complete<<" failed="<<r.failed.size()<<'\n';
+        } else if(cmd=="save-library" || cmd=="load-library") {
+            const auto path=argument(in);endOfCommand(in);
+            if(cmd=="save-library")library.save(path);else library=cpuai::SkillLibrary::load(path);
+            std::cout<<(cmd=="save-library"?"skill library saved":"skill library loaded")<<'\n';
         } else if (cmd=="limits") {
             unsigned long ops,ms,bytes;
             if(!(in>>ops>>ms>>bytes) || ms>60000)throw std::runtime_error("limits OPS MS BYTES; MS <=60000");

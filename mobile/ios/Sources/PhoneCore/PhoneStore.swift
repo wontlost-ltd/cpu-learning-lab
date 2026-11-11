@@ -51,10 +51,14 @@ public final class PhoneStore {
             var error=[CChar](repeating:0,count:512)
             guard let pointer=cpl_capture_create(self.journal,rate,UUID().uuidString,&error,512) else { throw PhoneError.invalid(String(cString:error)) }
             let handle=CaptureHandle(pointer);self.capture=handle
+            var lastUIUpdate=DispatchTime.now().uptimeNanoseconds
             let timer=DispatchSource.makeTimerSource(queue:self.worker);timer.schedule(deadline:.now(),repeating:.milliseconds(20))
             timer.setEventHandler { [weak self] in
                 guard let self=self else { return };var stats=CPLStats();var error=[CChar](repeating:0,count:512)
-                if cpl_poll(handle.pointer,8,&stats,&error,512)==0 { onUpdate(.success(CaptureStats(stats))) }
+                if cpl_poll(handle.pointer,8,&stats,&error,512)==0 {
+                    let now=DispatchTime.now().uptimeNanoseconds
+                    if now-lastUIUpdate>=250_000_000 { lastUIUpdate=now;onUpdate(.success(CaptureStats(stats))) }
+                }
                 else { self.timer?.cancel();onUpdate(.failure(PhoneError.invalid(String(cString:error)))) }
             }
             self.timer=timer;timer.resume();return handle

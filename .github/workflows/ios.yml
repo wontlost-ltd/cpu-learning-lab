@@ -1,5 +1,8 @@
 name: Native iOS collector checks
 on: [push, pull_request]
+concurrency:
+  group: ios-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

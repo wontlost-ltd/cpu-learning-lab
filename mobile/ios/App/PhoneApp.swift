@@ -16,6 +16,8 @@ import PhoneCore
     private var engine:AVAudioEngine?
     private var tapInstalled=false
     private var stopWanted=false
+    private var stopping=false
+    private var captureError:String?
     private var syncTask:Task<Void,Never>?
     private var journalURL:URL {
         let folder=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0]
@@ -39,7 +41,7 @@ import PhoneCore
         do { try await install(pair);status="配对已保存到 Keychain。设备：\(pair.device)" } catch { status=error.localizedDescription }
     }
     func start() async {
-        guard let store=store,!busy,!recording else { return };busy=true;stopWanted=false
+        guard let store=store,!busy,!recording else { return };busy=true;stopWanted=false;captureError=nil
         do {
             let granted=await withCheckedContinuation { continuation in AVAudioApplication.requestRecordPermission { continuation.resume(returning:$0) } }
             guard granted else { throw PhoneError.invalid("麦克风未授权。可在系统设置中修改。") }
@@ -54,7 +56,7 @@ import PhoneCore
                     guard let self=self else { return }
                     switch result {
                     case .success(let stats):self.events=stats.events;self.dropped=stats.dropped
-                    case .failure(let error):self.status=error.localizedDescription;Task { await self.stop(preserveStatus:true) }
+                    case .failure(let error):self.captureError=error.localizedDescription;self.status=error.localizedDescription;Task { await self.stop(preserveStatus:true) }
                     }
                 }
             }
@@ -72,8 +74,10 @@ import PhoneCore
     }
     func stop(preserveStatus:Bool=false) async {
         stopWanted=true
+        guard !stopping else { return };stopping=true;busy=true
+        defer { stopping=false;busy=false }
         engine?.stop();if tapInstalled { engine?.inputNode.removeTap(onBus:0);tapInstalled=false };engine=nil;recording=false
-        do { if let stats=try await store?.finishCapture() { events=stats.events;dropped=stats.dropped;if !preserveStatus { status="采集已停止。尾部丢弃 \(stats.discardedTail) 帧；溢出 \(stats.dropped) 帧。" } } }
+        do { if let stats=try await store?.finishCapture() { events=stats.events;dropped=stats.dropped;if !preserveStatus && captureError == nil { status="采集已停止。尾部丢弃 \(stats.discardedTail) 帧；溢出 \(stats.dropped) 帧。" } } }
         catch { status=error.localizedDescription }
         try? AVAudioSession.sharedInstance().setActive(false);busy=false
     }
@@ -110,14 +114,14 @@ struct PhoneView:View {
                 Section("前台采集") {
                     Button(model.recording ? "停止采集":"开始采集") {
                         Task { if model.recording { await model.stop() } else { await model.start() } }
-                    }.accessibilityIdentifier("captureButton").disabled(model.busy || model.pairing == nil)
-                    Text("已持久化事件：\(model.events)");Text("本次溢出帧：\(model.dropped)")
+                    }.accessibilityIdentifier("captureButton").disabled(model.busy || model.pairing == nil || (!model.recording && model.events>=4096))
+                    Text("已持久化事件：\(model.events) / 4096");Text("本次溢出帧：\(model.dropped)")
                     Text("离开前台或音频中断时停止；不会自动恢复录音。")
                 }
                 Section("TLS 补传") {
                     TextField("Mac 局域网 IPv4",text:$model.host).keyboardType(.decimalPad).autocorrectionDisabled().textInputAutocapitalization(.never)
                     TextField("端口",text:$model.port).keyboardType(.numberPad)
-                    Button("同步到 Mac") { model.synchronize() }.accessibilityIdentifier("syncButton").disabled(model.busy || model.recording || model.pairing == nil || model.host.isEmpty)
+                    Button("同步到 Mac") { model.synchronize() }.accessibilityIdentifier("syncButton").disabled(model.busy || model.recording || model.pairing == nil || model.host.isEmpty || UInt16(model.port) == nil || UInt16(model.port) == 0)
                     Text("采集结束后手动同步。仅发送特征；不触发模型学会事件。")
                 }
                 Section("状态") { Text(model.status).accessibilityIdentifier("statusText") }

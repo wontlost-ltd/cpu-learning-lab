@@ -30,6 +30,7 @@ with tempfile.TemporaryDirectory() as directory:
     for i in range(3):run(sync,'record',source,'fixture','-',wav)
     with server(target,identity,extra=('--drop-after-commit',)) as port:run(phone,source,bundle,'127.0.0.1',port,ok=False)
     assert 'peers=0' in run(sync,'stats',source).stdout
+    assert 'events=3' in run(sync,'stats',target).stdout
     with server(target,identity,count=2) as port:
         result=run(phone,source,bundle,'127.0.0.1',port);assert 'delivered=0 duplicates=3 complete=1' in result.stdout,result.stdout
         before=(source.read_bytes(),target.read_bytes());run(phone,source,bundle,'127.0.0.1',port);assert before==(source.read_bytes(),target.read_bytes())

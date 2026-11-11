@@ -12,10 +12,10 @@ struct FrozenCandidate {
     bool searchComplete;
 };
 // Freeze before exam data is loaded; exam scores never select or filter candidates.
-inline FrozenCandidate freeze(const Learner& l,const std::string& name,SearchOptions options={}) {
+inline FrozenCandidate freeze(const Learner& l,const std::string& name,SearchOptions options={},SearchControl control={}) {
     const auto* s=l.skill(name);
     if (!s || s->examples.empty()) throw std::runtime_error("skill has no teaching examples");
-    const auto r=l.learn(name,options);
+    const auto r=l.learn(name,options,control);
     if (r.hypotheses.empty()) throw std::runtime_error("no candidate to evaluate");
     return {name,s->revision,s->examples,r.hypotheses.front(),options,r.consistent,r.complete()};
 }

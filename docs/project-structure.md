@@ -6,8 +6,12 @@
 | --- | --- |
 | `include/cpuai/learner.hpp` | 学习 API、修订和示例存储；header-only |
 | `include/cpuai/polynomial.hpp` | 精确多项式身份、数值执行和域检查 |
-| `include/cpuai/search.hpp` | 有界多假设搜索、共识预测和主动问题 |
+| `include/cpuai/runtime.hpp` | 控制令牌、截止时间、PMR 内存预算与计量 |
+| `include/cpuai/session.hpp` | DAG、可续算枚举、候选匹配 |
+| `include/cpuai/search.hpp` | 结果生成、共识预测和主动问题 |
 | `include/cpuai/evaluation.hpp` | 冻结候选、独立测试及报告有效性检查 |
+| `tests/unit/runtime_test.cpp` | 缓存、修正、DAG、暂停、取消和资源预算 |
+| `benchmarks/` | 原生冷热／增量查询基准及环境记录 |
 | `tests/evaluation/` | 固定未见输入回归样例 |
 | `tests/integration/` | CLI 独立进程及恢复测试 |
 | `apps/cli/main.cpp` | 教学、查询、保存加载命令；不持有领域答案 |

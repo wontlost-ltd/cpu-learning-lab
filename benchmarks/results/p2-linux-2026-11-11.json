@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-11",
+  "scope": "P2 cold vs warm and incremental paths, not P1 or GPU comparison",
+  "environment": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "architecture": "x86_64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "visible_logical_cpus": 9,
+    "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+    "flags": "-std=c++20 -O2 -Wall -Wextra -Wpedantic",
+    "shared_environment": true
+  },
+  "measurements": {
+    "iterations": 200,
+    "correct_pairs": 200,
+    "cold_p50_us": 444.344,
+    "cold_p95_us": 3852.1,
+    "warm_p50_us": 0.982,
+    "warm_p95_us": 182.627,
+    "incremental_p50_us": 0.651,
+    "incremental_p95_us": 1.112,
+    "cold_combinations_total": 469200,
+    "warm_combinations_total": 0,
+    "warm_example_checks_total": 0,
+    "incremental_example_checks_total": 1200,
+    "search_storage_bytes": 159808,
+    "search_peak_requested_bytes": 180224
+  },
+  "process_peak_rss_kib": 10240,
+  "energy_measured": false
+}

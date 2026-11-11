@@ -1,6 +1,6 @@
 # CPU Learning Lab — 原生持续学习原型
 
-C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P5 可靠事件、离线配对与可选 TLS 传输；P4 真实设备和功耗验收仍待完成。
+C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用。当前阶段：P5 iOS 原生采集端、可靠事件和配对 TLS；P4 真实设备和功耗验收仍待完成。
 
 用户提供输入输出示例，系统归纳可执行算术假设，保留歧义并主动求教。它是有明确先验和边界的程序归纳实验，尚不是通用白板智能。
 
@@ -19,6 +19,8 @@ C++20、CPU-only、默认构建无第三方运行时依赖、无 LLM/API 调用�
 - [本地声音教学示例](examples/audio-session.md)
 - [P5 持久事件与同步设计](docs/adr/0007-durable-device-events.md)
 - [P5 配对与 TLS 设计](docs/adr/0008-paired-tls-transport.md)
+- [iOS 原生采集端](mobile/ios/README.md)
+- [iOS 采集设计与边界](docs/adr/0009-ios-collector.md)
 - [网络补传示例](examples/network-sync.md)
 - [离线补传示例](examples/device-sync.md)
 - [贡献说明](CONTRIBUTING.md)
@@ -186,3 +188,9 @@ WAV 限单声道 PCM16，8..48 kHz、50 ms..2 s。音频路径有输入大小与
 真实 TCP/TLS 传输沿用持久事件确认和幂等重试。单批最多 128 条，单连接最多 32 批，长度与收发期限有界；提交后断线可重试。默认只监听回环地址，尚无远程自动注册、移动 App 或生产级网络服务。默认构建继续不依赖 OpenSSL。
 
 详见[构建与配对操作](examples/network-sync.md)和 [ADR 0008](docs/adr/0008-paired-tls-transport.md)。下一步仍按原路线接手机采集端、穿戴扩展和由执行评估驱动的 ChronoSynth 适配，视频不在本阶段新增。
+
+## P5 手机步骤：iOS 原生前台采集
+
+`mobile/ios` 提供 SwiftUI 应用、Swift Package 与可复现 XcodeGen 工程。音频回调只写有界 C++ 队列，后台复用同一特征提取和持久日志；配对凭据存入 Keychain，用户停止采集后显式通过 Apple TLS 客户端补传。iOS 不依赖 OpenSSL。
+
+默认不录音、不联网；未配对不能开始。后台、音频中断或路由变更时停止，不自动恢复。只保存／发送特征，暂不提供手机端模型教学／识别或学会事件。构建、真机签名和 iPhone→Mac 操作见 [iOS README](mobile/ios/README.md)。模拟器验证不能替代真实麦克风、噪声和功耗验收。

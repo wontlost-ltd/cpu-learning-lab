@@ -18,3 +18,5 @@
 /mobile/ios/*.xcodeproj/
 /build-ios/
 /build-native/
+
+__pycache__/

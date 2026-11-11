@@ -34,7 +34,7 @@ build/network-protocol-tests: tests/unit/network_protocol_test.cpp $(HEADERS) | 
 test-network: build/cpu-link build/cpu-sync build/network-protocol-tests
 	./build/network-protocol-tests
 	$(PYTHON) tests/integration/network_cli_test.py build/cpu-link build/cpu-sync
-build/phone-bridge-tests: tests/unit/phone_bridge_test.cpp mobile/ios/Sources/CPUBridge/CPUBridge.cpp $(HEADERS) | build
+build/phone-bridge-tests: tests/unit/phone_bridge_test.cpp mobile/ios/Sources/CPUBridge/CPUBridge.cpp mobile/ios/Sources/CPUBridge/include/CPUBridge.h $(HEADERS) | build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/unit/phone_bridge_test.cpp mobile/ios/Sources/CPUBridge/CPUBridge.cpp -o $@
 test: build/phone-bridge-tests build/network-protocol-tests build/cpu-sync build/device-sync-tests build/cpu-listen build/audio-stream-tests build/observations-tests build/cpu-learn build/learning-tests build/evaluation-tests build/runtime-tests build/skills-tests
 	./build/phone-bridge-tests

@@ -3,7 +3,7 @@ CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic
 CPPFLAGS += -Iinclude
 PYTHON ?= python3
 HEADERS := $(wildcard include/cpuai/*.hpp)
-.PHONY: all test clean
+.PHONY: all test benchmark clean
 all: build/cpu-learn
 build:
 	mkdir -p build
@@ -13,9 +13,16 @@ build/learning-tests: tests/unit/learner_test.cpp $(HEADERS) | build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 build/evaluation-tests: tests/unit/evaluation_test.cpp $(HEADERS) | build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
-test: build/cpu-learn build/learning-tests build/evaluation-tests
+build/runtime-tests: tests/unit/runtime_test.cpp $(HEADERS) | build
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+test: build/cpu-learn build/learning-tests build/evaluation-tests build/runtime-tests
+	./build/runtime-tests
 	./build/learning-tests
 	./build/evaluation-tests tests/evaluation/square-v1.exam
 	$(PYTHON) tests/integration/cli_test.py build/cpu-learn tests/evaluation/square-v1.exam
+build/search-benchmark: benchmarks/search_benchmark.cpp $(HEADERS) | build
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+benchmark: build/search-benchmark
+	./build/search-benchmark
 clean:
 	rm -rf build

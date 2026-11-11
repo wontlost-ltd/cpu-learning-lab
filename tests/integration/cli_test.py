@@ -37,4 +37,37 @@ quit
     assert "unexpected trailing argument" in malformed.stderr
     assert "cannot load" in malformed.stderr
     assert malformed.stdout.count("hypotheses=0") == 2
+    resources = run('''teach s 0 0
+teach s 1 1
+show s
+show s
+stats
+teach s 2 4
+ask s 3
+stats
+cancel-next
+ask s 3
+stats
+ask s 3
+limits 50000 0 4194304
+ask s 3
+stats
+limits 50000 1000 0
+ask s 3
+stats
+limits 50000 1000 4194304
+slice 0
+show s
+stats
+slice 50000
+ask s 3
+stats
+quit
+''')
+    assert not resources.stderr, resources.stderr
+    assert "new_combinations=0 example_checks=0 cache_hit=1" in resources.stdout
+    assert "example_checks=6 cache_hit=0 incremental=1" in resources.stdout
+    for reason in ("cancelled", "deadline", "memory_limit", "work_slice"):
+        assert f"stop={reason}" in resources.stdout, resources.stdout
+    assert resources.stdout.count("9 [candidate consensus") == 3, resources.stdout
 print("PASS: CLI ambiguity, active question, held-out exam, restart and malformed commands")

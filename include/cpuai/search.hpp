@@ -1,69 +1,39 @@
 #pragma once
-#include "polynomial.hpp"
-#include <map>
+#include "session.hpp"
 
 namespace cpuai {
-struct SearchOptions {
-    std::size_t budget=50000;
-    int maxDepth=2;
-    std::size_t maxUnique=4096;
-    std::size_t maxHypotheses=64;
-    bool operator==(const SearchOptions&) const = default;
-};
 struct Result {
     std::vector<Expr> hypotheses;
     std::size_t evaluated=0, unique=0, consistent=0;
     bool exhausted=false, truncated=false;
+    StopReason stopReason=StopReason::complete;
+    QueryMetrics metrics;
     bool complete() const { return !exhausted && !truncated; }
 };
-inline bool simpler(const Expr& a, const Expr& b) {
-    if (a.nodes != b.nodes) return a.nodes < b.nodes;
-    return a.text < b.text;
+inline Result materialize(SearchSession& session,FitResult fit,StopReason reason) {
+    Result r;
+    r.stopReason=fit.interrupted.value_or(reason);
+    r.exhausted=r.stopReason!=StopReason::complete;
+    r.evaluated=session.evaluated();r.unique=session.size();r.consistent=fit.ids.size();
+    r.metrics.exampleChecks=fit.checks;
+    r.metrics.storageBytes=session.storageBytes();r.metrics.peakStorageBytes=session.peakStorageBytes();
+    r.metrics.dagEdges=session.edges();
+    session.rank(fit.ids);
+    r.truncated=fit.ids.size()>session.options().maxHypotheses;
+    if(fit.ids.size()>session.options().maxHypotheses)fit.ids.resize(session.options().maxHypotheses);
+    for(auto id:fit.ids)r.hypotheses.push_back(session.expression(id));
+    return r;
 }
-inline Result infer(const std::vector<Example>& data, SearchOptions options={}) {
-    if (data.size()>128 || options.budget>1000000 || options.maxDepth<0 || options.maxDepth>4
-        || options.maxUnique<8 || options.maxUnique>50000
-        || options.maxHypotheses==0 || options.maxHypotheses>256)
-        throw std::runtime_error("invalid search limits");
-    for (auto e:data) validateExample(e);
-    Result r; if (data.empty()) return r;
-    std::vector<Expr> pool;
-    std::map<Polynomial, std::size_t> seen;
-    auto insert=[&](Expr e) {
-        seen.emplace(e.coefficients,pool.size()); pool.push_back(std::move(e));
-    };
-    insert({"x",{0,1}});
-    for (int c=-3; c<=3; ++c) insert({std::to_string(c),{c}});
-    bool stopped=false;
-    for (int depth=1; depth<=options.maxDepth && !stopped; ++depth) {
-        const auto n=pool.size(); // Previous-level operands only, never newly appended entries.
-        for (std::size_t i=0; i<n && !stopped; ++i) {
-            for (std::size_t j=0; j<n && !stopped; ++j) {
-                if (std::max(pool[i].depth,pool[j].depth)!=depth-1) continue;
-                for (char op:std::string("+-*")) {
-                    if (op!='-' && j<i) continue;
-                    if (r.evaluated==options.budget) { r.exhausted=true; stopped=true; break; }
-                    ++r.evaluated;
-                    auto p=combine(pool[i].coefficients,pool[j].coefficients,op);
-                    if (!p || seen.contains(*p)) continue;
-                    if (pool.size()==options.maxUnique) { r.exhausted=true; stopped=true; break; }
-                    Expr e{"("+pool[i].text+op+pool[j].text+")",*p,depth,1+pool[i].nodes+pool[j].nodes};
-                    insert(std::move(e));
-                }
-            }
-        }
-    }
-    r.unique=pool.size();
-    for (const auto& p:pool) {
-        bool fits=true;
-        for (auto e:data) if (!close(evaluate(p,e.x),e.y)) { fits=false; break; }
-        if (fits) r.hypotheses.push_back(p);
-    }
-    r.consistent=r.hypotheses.size();
-    std::sort(r.hypotheses.begin(),r.hypotheses.end(),simpler);
-    if (r.hypotheses.size()>options.maxHypotheses) {
-        r.truncated=true; r.hypotheses.resize(options.maxHypotheses);
-    }
+inline Result infer(const std::vector<Example>& data,SearchOptions options={},SearchControl control={}) {
+    validateOptions(options);
+    if(data.size()>128)throw std::runtime_error("example limit");
+    for(auto e:data)validateExample(e);
+    if(data.empty())return {};
+    const auto start=SteadyClock::now();SearchSession session(options);
+    const auto reason=session.run(control);
+    auto r=materialize(session,session.fit(data,control),reason);
+    r.metrics.newCombinations=session.evaluated();
+    r.metrics.elapsedMicros=std::chrono::duration_cast<std::chrono::microseconds>(SteadyClock::now()-start).count();
     return r;
 }
 enum class PredictionStatus { no_hypothesis, incomplete_search, disagreement, consensus };

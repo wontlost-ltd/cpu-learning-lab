@@ -2,6 +2,8 @@
 
 Status: implemented in P1. Supersedes ADR 0001's sample-signature deduplication and first-match behavior.
 
+P2 ADR 0003 supersedes the string tie-break, per-query enumeration and unaccounted graph storage described here; evaluation separation remains in force.
+
 ## Problem
 
 The P0 learner discarded x² after seeing x on inputs 0 and 1. It then could not represent uncertainty. Fitting sample outputs is not semantic identity, and self-generated checks cannot establish new-task performance.

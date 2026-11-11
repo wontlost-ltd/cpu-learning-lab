@@ -11,3 +11,10 @@
 *.pair
 *.pem
 /cpu-link
+
+/mobile/ios/.build/
+/mobile/ios/.swiftpm/
+/mobile/ios/Generated/
+/mobile/ios/*.xcodeproj/
+/build-ios/
+/build-native/

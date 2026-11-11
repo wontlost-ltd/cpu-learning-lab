@@ -1,0 +1,52 @@
+name: CPULearningPhone
+options:
+  deploymentTarget:
+    iOS: '17.0'
+packages:
+  PhoneCore:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    CLANG_CXX_LANGUAGE_STANDARD: c++20
+targets:
+  CPULearningPhone:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    dependencies:
+      - package: PhoneCore
+        product: PhoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wontlost.cpu-learning-phone
+        TARGETED_DEVICE_FAMILY: '1,2'
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: CPU Learning Phone
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: 'Only capture audio when you tap Start. Extracted features stay on this device until you choose Sync.'
+        NSLocalNetworkUsageDescription: 'Send your saved feature events to the Mac receiver you explicitly paired with.'
+  PhoneUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: CPULearningPhone
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wontlost.cpu-learning-phone.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: CPULearningPhone
+schemes:
+  CPULearningPhone:
+    build:
+      targets:
+        CPULearningPhone: all
+        PhoneUITests: [test]
+    test:
+      targets:
+        - PhoneUITests

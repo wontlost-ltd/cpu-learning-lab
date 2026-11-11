@@ -1,0 +1,38 @@
+name: Native iOS collector checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          brew list openssl@3 || brew install openssl@3
+          brew list xcodegen || brew install xcodegen
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
+      - name: Swift core and native bridge tests
+        working-directory: mobile/ios
+        run: swift test
+      - name: Build receiver for Apple client interop
+        run: |
+          cmake -S . -B build-native -DCMAKE_BUILD_TYPE=Release -DCPUAI_WITH_NETWORK=ON -DBUILD_TESTING=OFF
+          cmake --build build-native --config Release --parallel 2
+      - name: Real Network.framework TLS interoperability
+        run: python3 tests/integration/phone_network_test.py mobile/ios/.build/debug/phone-sync build-native/cpu-link build-native/cpu-sync
+      - name: Generate Xcode project
+        working-directory: mobile/ios
+        run: xcodegen generate
+      - name: Build iOS Simulator application
+        run: xcodebuild -project mobile/ios/CPULearningPhone.xcodeproj -scheme CPULearningPhone -destination 'generic/platform=iOS Simulator' -derivedDataPath build-ios CODE_SIGNING_ALLOWED=NO build
+      - name: Choose available iPhone simulator
+        run: |
+          xcrun simctl list devices available -j > /tmp/cpuai-simulators.json
+          python3 - <<'PY'
+          import json,os
+          devices=json.load(open('/tmp/cpuai-simulators.json'))['devices']
+          selected=next(d['udid'] for runtime in sorted(devices,reverse=True) for d in devices[runtime] if 'iPhone' in d['name'] and d.get('isAvailable',False))
+          with open(os.environ['GITHUB_ENV'],'a') as out:out.write('SIMULATOR_ID='+selected+'\n')
+          PY
+      - name: Simulator unpaired privacy boundary
+        run: xcodebuild -project mobile/ios/CPULearningPhone.xcodeproj -scheme CPULearningPhone -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath build-ios CODE_SIGNING_ALLOWED=NO test

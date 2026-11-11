@@ -22,7 +22,7 @@ private final class FramedConnection {
             SecTrustSetPolicies(reference,SecPolicyCreateBasicX509())
             SecTrustSetNetworkFetchAllowed(reference,false)
             complete(SecTrustEvaluateWithError(reference,nil))
-        },queue)
+        },DispatchQueue.global(qos:.utility))
         let parameters=NWParameters(tls:tls,tcp:NWProtocolTCP.Options())
         connection=NWConnection(host:NWEndpoint.Host(host),port:NWEndpoint.Port(rawValue:port)!,using:parameters)
     }
@@ -34,6 +34,7 @@ private final class FramedConnection {
                 switch state {
                 case .ready:resumed=true;continuation.resume()
                 case .failed(let error):resumed=true;continuation.resume(throwing:error)
+                case .waiting(let error):resumed=true;continuation.resume(throwing:error)
                 case .cancelled:resumed=true;continuation.resume(throwing:PhoneError.invalid("Connection cancelled or timed out"))
                 default:break
                 }

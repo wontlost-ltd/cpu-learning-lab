@@ -21,9 +21,11 @@ jobs:
       - name: Real Network.framework TLS interoperability
         run: python3 tests/integration/phone_network_test.py mobile/ios/.build/debug/phone-sync build-native/cpu-link build-native/cpu-sync
       - name: Generate Xcode project
+        if: always()
         working-directory: mobile/ios
         run: xcodegen generate
       - name: Build iOS Simulator application
+        if: always()
         run: xcodebuild -project mobile/ios/CPULearningPhone.xcodeproj -scheme CPULearningPhone -destination 'generic/platform=iOS Simulator' -derivedDataPath build-ios CODE_SIGNING_ALLOWED=NO build
       - name: Choose available iPhone simulator
         run: |

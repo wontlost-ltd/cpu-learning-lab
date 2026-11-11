@@ -99,6 +99,9 @@ import PhoneCore
 
 struct PhoneView:View {
     @StateObject private var model=PhoneModel()
+    @StateObject private var watch=PhoneWatchRelay()
+    @State private var importingWatch=false
+    @State private var pendingIsWatch=false
     @Environment(\.scenePhase) private var scene
     @State private var importing=false
     @State private var pending:Pairing?
@@ -108,7 +111,7 @@ struct PhoneView:View {
             Form {
                 Section("配对") {
                     if let pair=model.pairing { Text("设备：\(pair.device)");Text("接收端：\(pair.server)") }
-                    Button("导入配对文件") { importing=true }.accessibilityIdentifier("importPairing").disabled(model.busy || model.recording)
+                    Button("导入配对文件") { importingWatch=false;importing=true }.accessibilityIdentifier("importPairing").disabled(model.busy || model.recording)
                     Text("配对包由你信任的 Mac 接收端生成，包含敏感设备密钥。")
                 }
                 Section("前台采集") {
@@ -124,22 +127,34 @@ struct PhoneView:View {
                     Button("同步到 Mac") { model.synchronize() }.accessibilityIdentifier("syncButton").disabled(model.busy || model.recording || model.pairing == nil || model.host.isEmpty || UInt16(model.port) == nil || UInt16(model.port) == 0)
                     Text("采集结束后手动同步。仅发送特征；不触发模型学会事件。")
                 }
+                Section("Apple Watch 中继") {
+                    if let pair=watch.watchPair { Text("手表设备：\(pair.device)") }
+                    Button("导入手表专用配对包") { importingWatch=true;importing=true }.disabled(model.pairing == nil || model.busy || model.recording || watch.busy)
+                    Button("启用手表连接") { watch.enable() }.disabled(watch.busy || watch.enabled)
+                    Text(watch.reachable ? "手表当前可达":"手表当前不可达")
+                    Button("向手表发送身份配置") { Task { await watch.configureWatch() } }.disabled(watch.watchPair == nil || !watch.enabled || !watch.reachable || watch.busy)
+                    Text("iPhone 保留的手表事件：\(watch.events)")
+                    Button("补传手表事件到 Mac") { if let port=UInt16(model.port) { watch.forward(host:model.host,port:port) } }.disabled(watch.watchPair == nil || watch.busy || model.busy || model.recording || model.host.isEmpty || UInt16(model.port) == nil || UInt16(model.port) == 0)
+                    Text(watch.status)
+                    Text("只确认当前系统配对的手表。收到 iPhone 回执不代表 Mac 已收到。")
+                }
                 Section("状态") { Text(model.status).accessibilityIdentifier("statusText") }
             }.navigationTitle("CPU Learning Phone")
         }
-        .task { await model.restore() }
-        .onChange(of:scene) { _,phase in if phase == .background || (phase == .inactive && model.recording) { model.background() } }
+        .task { await model.restore();await watch.restore(phone:model.pairing) }
+        .onChange(of:model.pairing) { _,pair in watch.phoneChanged(pair) }
+        .onChange(of:scene) { _,phase in watch.foreground(phase == .active);if phase == .background || (phase == .inactive && model.recording) { model.background() } }
         .onReceive(NotificationCenter.default.publisher(for:AVAudioSession.interruptionNotification)) { _ in model.interrupted() }
         .onReceive(NotificationCenter.default.publisher(for:AVAudioSession.routeChangeNotification)) { _ in if model.recording { model.interrupted() } }
         .fileImporter(isPresented:$importing,allowedContentTypes:[.data,.plainText]) { result in
             do {
                 let url=try result.get();let scoped=url.startAccessingSecurityScopedResource();defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 let handle=try FileHandle(forReadingFrom:url);defer { try? handle.close() }
-                let data=try handle.read(upToCount:1025) ?? Data();pending=try Pairing(data:data);confirming=true
+                let data=try handle.read(upToCount:1025) ?? Data();pending=try Pairing(data:data);pendingIsWatch=importingWatch;confirming=true
             } catch { model.status=error.localizedDescription }
         }
         .alert("确认信任此配对包？",isPresented:$confirming,presenting:pending) { pair in
-            Button("导入并信任") { Task { await model.accept(pair) };pending=nil }
+            Button("导入并信任") { Task { if pendingIsWatch { await watch.accept(pair,phone:model.pairing) } else { await model.accept(pair) } };pending=nil }
             Button("取消",role:.cancel) { pending=nil }
         } message: { pair in Text("接收端：\(pair.server)\n设备：\(pair.device)\nSHA256：\(pair.pin)\n请确认文件来自你信任的接收端。") }
     }

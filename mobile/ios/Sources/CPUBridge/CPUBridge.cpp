@@ -23,15 +23,23 @@ extern "C" {
 CPLJournal* cpl_open(const char* path,const char* device,char* error,size_t size){try{if(!path||!device)throw std::runtime_error("missing journal identity");cpuai::validateDeviceId(device);return new CPLJournal(path,device);}catch(const std::exception& e){failure(error,size,e.what());return nullptr;}}
 void cpl_close(CPLJournal* j){delete j;}
 size_t cpl_event_count(CPLJournal* j){return j?j->value.events().size():0;}
-int cpl_batch(CPLJournal* j,size_t offset,uint8_t* bytes,size_t cap,size_t* size,size_t* count,char* error,size_t error_size){try{
-    if(!j||!bytes||!size||!count)throw std::runtime_error("missing batch argument");
+int cpl_batch(CPLJournal* j,size_t offset,uint8_t* bytes,size_t cap,size_t* size,size_t* count,char* error,size_t error_size){return cpl_batch_limited(j,offset,128,bytes,cap,size,count,error,error_size);}
+int cpl_batch_limited(CPLJournal* j,size_t offset,size_t limit,uint8_t* bytes,size_t cap,size_t* size,size_t* count,char* error,size_t error_size){try{
+    if(!j||!bytes||!size||!count||limit==0||limit>128)throw std::runtime_error("missing batch argument");
     std::vector<cpuai::DeviceEvent> all;
     for(const auto& [id,event]:j->value.events())if(id.device==j->value.node())all.push_back(event);
     if(offset>=all.size()){*size=0;*count=0;return 0;}
-    std::vector<cpuai::DeviceEvent> batch(all.begin()+static_cast<std::ptrdiff_t>(offset),all.begin()+static_cast<std::ptrdiff_t>(std::min(offset+128,all.size())));
+    std::vector<cpuai::DeviceEvent> batch(all.begin()+static_cast<std::ptrdiff_t>(offset),all.begin()+static_cast<std::ptrdiff_t>(std::min(offset+limit,all.size())));
     const auto payload=cpuai::encodeBatch(batch);if(payload.size()>cap)throw std::runtime_error("batch buffer too small");
     std::memcpy(bytes,payload.data(),payload.size());*size=payload.size();*count=batch.size();return 0;
 }catch(const std::exception& e){failure(error,error_size,e.what());return -1;}}
+int cpl_receive(CPLJournal* j,const uint8_t* bytes,size_t size,size_t count,size_t* inserted,char* error,size_t error_size){try{
+    if(!j||!bytes||!inserted||size>131072||count==0||count>128)throw std::runtime_error("invalid relay input");
+    const auto events=cpuai::decodeBatch(std::string(reinterpret_cast<const char*>(bytes),size),j->value.node());
+    if(events.size()!=count)throw std::runtime_error("relay envelope count mismatch");
+    *inserted=j->value.receive(events);return 0;
+}catch(const std::exception& e){failure(error,error_size,e.what());return -1;}}
+size_t cpl_receipt_count(CPLJournal* j,const char* peer){if(!j||!peer)return 0;size_t count=0;for(const auto& [id,event]:j->value.events()){(void)event;if(j->value.acknowledged(peer,id))++count;}return count;}
 int cpl_ack(CPLJournal* j,const char* peer,const uint8_t* batch,size_t size,char* error,size_t error_size){try{
     if(!j||!peer||!batch||size>131072)throw std::runtime_error("invalid acknowledgement");
     const auto events=cpuai::decodeBatch(std::string(reinterpret_cast<const char*>(batch),size),j->value.node());j->value.acknowledge(peer,events);return 0;

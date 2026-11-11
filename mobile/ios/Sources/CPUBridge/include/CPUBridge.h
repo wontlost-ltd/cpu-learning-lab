@@ -12,6 +12,9 @@ CPLJournal* cpl_open(const char* path,const char* device,char* error,size_t erro
 void cpl_close(CPLJournal* journal);
 size_t cpl_event_count(CPLJournal* journal);
 int cpl_batch(CPLJournal* journal,size_t offset,uint8_t* bytes,size_t capacity,size_t* size,size_t* count,char* error,size_t error_size);
+int cpl_batch_limited(CPLJournal* journal,size_t offset,size_t limit,uint8_t* bytes,size_t capacity,size_t* size,size_t* count,char* error,size_t error_size);
+int cpl_receive(CPLJournal* journal,const uint8_t* bytes,size_t size,size_t expected_count,size_t* inserted,char* error,size_t error_size);
+size_t cpl_receipt_count(CPLJournal* journal,const char* peer);
 int cpl_ack(CPLJournal* journal,const char* peer,const uint8_t* batch,size_t size,char* error,size_t error_size);
 CPLCapture* cpl_capture_create(CPLJournal* journal,uint32_t rate,const char* session,char* error,size_t error_size);
 /* One producer: callback only. Fixed memory; no feature extraction, locks, disk I/O or allocation. */

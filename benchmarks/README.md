@@ -20,3 +20,12 @@ Output reports p50/p95 microseconds, correctness checks, total new combinations,
 The committed sample result also records CPU model, visible logical CPU count, compiler/flags, OS and process maximum RSS. The Linux collector uses resource.getrusage(RUSAGE_CHILDREN) immediately after running the benchmark, before spawning other children; ru_maxrss is KiB on Linux. This process peak covers all benchmark phases, not just the graph. PMR requested-byte accounting excludes allocator metadata and all non-graph allocations.
 
 Results come from a shared execution environment, not a dedicated or battery-powered device. They show measured local behavior, not an energy reduction or a cross-hardware speed guarantee. No pass/fail threshold depends on microsecond timing. Reproduce and compare quality and work counters alongside latency.
+
+## P4 音频管线
+
+```sh
+make build/audio-benchmark
+./build/audio-benchmark /path/to/mono-pcm16.wav
+```
+
+或用 CMake 的 `-DCPUAI_BUILD_BENCHMARKS=ON`。程序预热一次，再测 30 次 WAV 读取、固定特征提取和单标签最近邻查询，输出 p50/p95（毫秒）。重复同一文件，包含热缓存影响；不含录音设备和传输，非硬实时保证，非能耗测量。边界与先验见 ADR 0005。

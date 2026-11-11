@@ -1,0 +1,4 @@
+/build/
+/cpu-learn
+/learning-tests
+*.state

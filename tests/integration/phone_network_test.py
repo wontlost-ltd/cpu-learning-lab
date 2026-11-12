@@ -8,6 +8,7 @@ import sys
 import tempfile
 import wave
 phone,link,sync=(str(Path(p).resolve()) for p in sys.argv[1:4])
+relayTool=str(Path(sys.argv[4]).resolve()) if len(sys.argv)>4 else None
 def run(*args,ok=True):
     r=subprocess.run(list(map(str,args)),capture_output=True,text=True,timeout=30)
     assert (r.returncode==0)==ok,(args[:2],r.returncode,r.stdout,r.stderr)
@@ -43,4 +44,14 @@ with tempfile.TemporaryDirectory() as directory:
         run(link,'revoke',identity,'phone');run(phone,source,bundle,'127.0.0.1',port,ok=False)
     rotated=root/'rotated.pair';run(link,'pair',identity,'phone',rotated)
     with server(target,identity) as port:run(phone,source,rotated,'127.0.0.1',port)
+    if relayTool:
+        watch=root/'watch.journal';relay=root/'watch-relay.journal';watchBundle=root/'watch.pair'
+        run(sync,'init',watch,'watch');run(link,'pair',identity,'watch',watchBundle)
+        for i in range(41):run(sync,'record',watch,'watch-fixture','-',wav)
+        result=run(relayTool,watch,relay,'watch','phone');assert 'inserted=41' in result.stdout,result.stdout
+        before=(watch.read_bytes(),relay.read_bytes());run(relayTool,watch,relay,'watch','phone');assert before==(watch.read_bytes(),relay.read_bytes())
+        with server(target,identity) as port:
+            result=run(phone,relay,watchBundle,'127.0.0.1',port);assert 'delivered=41' in result.stdout,result.stdout
+        assert 'events=44' in run(sync,'stats',target).stdout
+        run(phone,relay,rotated,'127.0.0.1',1,ok=False)  # Phone credential cannot impersonate watch source.
 print('Apple client tests passed: pinned TLS, cross-language batch hash, durable ACK, replay, wrong pin/key and revocation')

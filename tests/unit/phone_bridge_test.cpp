@@ -14,7 +14,17 @@ int main(){const auto root=std::filesystem::temp_directory_path()/("cpuai-phone-
     cpl_capture_destroy(capture);std::array<uint8_t,131072> bytes{};size_t size=0,count=0;
     require(cpl_batch(journal,0,bytes.data(),bytes.size(),&size,&count,error,sizeof(error))==0&&count==9);
     const auto events=cpuai::decodeBatch(std::string(reinterpret_cast<char*>(bytes.data()),size),"phone");require(events.back().segment==1);
-    require(cpl_ack(journal,"desktop",bytes.data(),size,error,sizeof(error))==0);cpl_close(journal);
+    require(cpl_ack(journal,"desktop",bytes.data(),size,error,sizeof(error))==0);
+    require(cpl_receipt_count(journal,"desktop")==9);
+    require(cpl_batch_limited(journal,0,4,bytes.data(),bytes.size(),&size,&count,error,sizeof(error))==0&&count==4);
+    auto relay=cpl_open((root/"relay.journal").string().c_str(),"phone",error,sizeof(error));require(relay);size_t inserted=0;
+    require(cpl_receive(relay,bytes.data(),size,3,&inserted,error,sizeof(error))==-1&&cpl_event_count(relay)==0);
+    require(cpl_receive(relay,bytes.data(),size,4,&inserted,error,sizeof(error))==0&&inserted==4);
+    require(cpl_receive(relay,bytes.data(),size,4,&inserted,error,sizeof(error))==0&&inserted==0);
+    auto wrong=cpl_open((root/"wrong.journal").string().c_str(),"other-watch",error,sizeof(error));require(wrong);
+    require(cpl_receive(wrong,bytes.data(),size,4,&inserted,error,sizeof(error))==-1&&cpl_event_count(wrong)==0);
+    require(cpl_batch_limited(journal,0,0,bytes.data(),bytes.size(),&size,&count,error,sizeof(error))==-1);
+    cpl_close(wrong);cpl_close(relay);cpl_close(journal);
     {cpuai::DeviceJournal saved(root/"phone.journal");require(saved.events().size()==9&&saved.acknowledged("desktop",events.front().id));}
     std::filesystem::remove_all(root);std::cout<<"phone bridge tests passed: fixed queue, overflow gaps, durable windows, batch and receipts\n";
 }

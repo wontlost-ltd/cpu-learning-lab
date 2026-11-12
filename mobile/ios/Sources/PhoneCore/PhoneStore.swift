@@ -44,6 +44,15 @@ public final class PhoneStore {
     public func close() async throws {
         try await perform { guard self.capture == nil && !self.syncing else { throw PhoneError.invalid("Stop capture/sync before closing journal") };cpl_close(self.journal);self.journal=nil }
     }
+    public func acknowledgedCount(peer: String) async throws -> Int { try await perform { Int(cpl_receipt_count(self.journal,peer)) } }
+    public func receiveRelay(payload: Data,count: Int) async throws -> Int {
+        try await perform {
+            guard self.capture == nil && !self.syncing else { throw PhoneError.invalid("Relay journal busy; retry later") }
+            var inserted=0,error=[CChar](repeating:0,count:512)
+            let result=payload.withUnsafeBytes { bytes in cpl_receive(self.journal,bytes.bindMemory(to:UInt8.self).baseAddress,payload.count,count,&inserted,&error,512) }
+            guard result==0 else { throw PhoneError.invalid(String(cString:error)) };return inserted
+        }
+    }
     public func count() async throws -> Int { try await perform { Int(cpl_event_count(self.journal)) } }
     public func startCapture(rate: UInt32,onUpdate: @escaping (Result<CaptureStats,Error>)->Void) async throws -> CaptureHandle {
         try await perform {
@@ -77,11 +86,11 @@ public final class PhoneStore {
         try await perform { guard self.capture == nil && !self.syncing else { throw PhoneError.invalid("Stop capture before syncing") };self.syncing=true }
     }
     func endSync() async { _ = try? await perform { self.syncing=false } }
-    func batch(offset: Int) async throws -> (Data,Int) {
+    func batch(offset: Int,limit: Int=128) async throws -> (Data,Int) {
         try await perform {
             guard self.syncing else { throw PhoneError.invalid("Sync not active") }
             var bytes=[UInt8](repeating:0,count:131072),error=[CChar](repeating:0,count:512);var size=0,count=0
-            guard cpl_batch(self.journal,offset,&bytes,131072,&size,&count,&error,512)==0 else { throw PhoneError.invalid(String(cString:error)) }
+            guard cpl_batch_limited(self.journal,offset,limit,&bytes,131072,&size,&count,&error,512)==0 else { throw PhoneError.invalid(String(cString:error)) }
             return (Data(bytes.prefix(size)),count)
         }
     }

@@ -2,6 +2,7 @@ name: CPULearningPhone
 options:
   deploymentTarget:
     iOS: '17.0'
+    watchOS: '10.0'
 packages:
   PhoneCore:
     path: .
@@ -16,6 +17,8 @@ targets:
     sources:
       - path: App
     dependencies:
+      - target: CPULearningWatch
+        embed: true
       - package: PhoneCore
         product: PhoneCore
     settings:
@@ -29,6 +32,26 @@ targets:
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: 'Only capture audio when you tap Start. Extracted features stay on this device until you choose Sync.'
         NSLocalNetworkUsageDescription: 'Send your saved feature events to the Mac receiver you explicitly paired with.'
+  CPULearningWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: WatchApp
+      - path: App/PrivacyInfo.xcprivacy
+    dependencies:
+      - package: PhoneCore
+        product: PhoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wontlost.cpu-learning-phone.watch
+    info:
+      path: Generated/WatchInfo.plist
+      properties:
+        CFBundleDisplayName: CPU Learning Watch
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.wontlost.cpu-learning-phone
+        WKRunsIndependentlyOfCompanionApp: false
+        NSMicrophoneUsageDescription: 'Capture audio features only when you tap Start. Saved events remain on this watch until you choose relay.'
   PhoneUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -50,3 +73,7 @@ schemes:
     test:
       targets:
         - PhoneUITests
+  CPULearningWatch:
+    build:
+      targets:
+        CPULearningWatch: all

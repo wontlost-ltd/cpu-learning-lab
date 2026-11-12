@@ -36,3 +36,5 @@
 P5 的可选 macOS/Linux 网络适配器使用 TLS 1.3、离线配对包和逐批设备来源授权，沿用接收端持久提交／发送端回执。默认只监听回环地址；客户端证书指纹绑定在发送密钥前执行。没有远程自动注册、移动端部署或安全审计，参见 ADR 0008。
 
 P5 的 iOS 采集端通过 C ABI 复用 C++ 音频、日志和协议，UI／麦克风权限／Keychain 由 Swift 与系统框架管理。实时回调只进入固定 SPSC 队列，背景 worker 完成特征与持久化，用户结束采集后使用 Apple TLS 客户端手动补传。后台与中断停止、不自动恢复；手机模型教学、穿戴和 ChronoSynth 适配尚未完成，详见 ADR 0009。
+
+Apple Watch 作为受系统配对约束的伴侣采集源：本地提交后，经有界 WatchConnectivity envelope 进入 iPhone 源镜像日志，iPhone 提交后才回复 watch。之后以独立 watch 凭据向 Mac 提交。两层 ACK 不混淆，原件保留、重试去重；没有后台运行保证或学习副作用，见 ADR 0010。

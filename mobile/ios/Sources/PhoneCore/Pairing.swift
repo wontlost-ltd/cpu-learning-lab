@@ -22,19 +22,22 @@ public struct Pairing: Equatable {
     }
     public var encoded: Data { Data("CPUAI_PAIR1 \(server) \(device) \(pin) \(token)\n".utf8) }
 }
-public enum PairingKeychain {
-    private static let query: [String:Any] = [kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:"com.wontlost.cpu-learning-phone",kSecAttrAccount as String:"device-pair"]
-    public static func load() throws -> Pairing? {
-        var q=query;q[kSecReturnData as String]=true;q[kSecMatchLimit as String]=kSecMatchLimitOne
-        var value: CFTypeRef?;let status=SecItemCopyMatching(q as CFDictionary,&value)
+enum SecureItem {
+    private static func query(_ account:String)->[String:Any] { [kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:"com.wontlost.cpu-learning-phone",kSecAttrAccount as String:account] }
+    static func load(_ account:String) throws -> Data? {
+        var q=query(account);q[kSecReturnData as String]=true;q[kSecMatchLimit as String]=kSecMatchLimitOne
+        var value:CFTypeRef?;let status=SecItemCopyMatching(q as CFDictionary,&value)
         if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data=value as? Data else { throw PhoneError.invalid("Keychain unavailable; unlock device") }
-        return try Pairing(data:data)
+        guard status == errSecSuccess,let data=value as? Data else { throw PhoneError.invalid("Keychain unavailable; unlock device") };return data
     }
-    public static func save(_ pair: Pairing) throws {
-        let attributes: [String:Any]=[kSecValueData as String:pair.encoded,kSecAttrAccessible as String:kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
-        var status=SecItemUpdate(query as CFDictionary,attributes as CFDictionary)
-        if status == errSecItemNotFound { var item=query;attributes.forEach { item[$0.key]=$0.value };status=SecItemAdd(item as CFDictionary,nil) }
-        guard status == errSecSuccess else { throw PhoneError.invalid("Cannot save pairing to Keychain") }
+    static func save(_ data:Data,account:String) throws {
+        let attributes:[String:Any]=[kSecValueData as String:data,kSecAttrAccessible as String:kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
+        let q=query(account);var status=SecItemUpdate(q as CFDictionary,attributes as CFDictionary)
+        if status == errSecItemNotFound { var item=q;attributes.forEach { item[$0.key]=$0.value };status=SecItemAdd(item as CFDictionary,nil) }
+        guard status == errSecSuccess else { throw PhoneError.invalid("Cannot save credential to Keychain") }
     }
+}
+public enum PairingKeychain {
+    public static func load(account:String="device-pair") throws -> Pairing? { guard let data=try SecureItem.load(account) else { return nil };return try Pairing(data:data) }
+    public static func save(_ pair:Pairing,account:String="device-pair") throws { try SecureItem.save(pair.encoded,account:account) }
 }
